@@ -1,0 +1,344 @@
+<!DOCTYPE Project SYSTEM "http://www.slickedit.com/dtd/vse/10.0/vpj.dtd">
+<Project
+    Version="10.0"
+    VendorName="SlickEdit"
+    TemplateName="Other C/C++"
+    WorkingDir=".">
+    <Config
+        Name="Debug"
+        Type="cpp"
+        DebugCallbackName="gdb"
+        OutputFile="%bdrefdes169"
+        CompilerConfigName="Latest Version">
+        <Menu>
+            <Target
+                Name="Compile"
+                MenuCaption="&amp;Compile"
+                CaptureOutputWith="ProcessBuffer"
+                OutputExts="*.o"
+                SaveOption="SaveCurrent"
+                RunFromDir="%rw">
+                <Exec CmdLine='cc -c -g %i %defd -o "%bd%n.o" "%f"'/>
+            </Target>
+            <Target
+                Name="Link"
+                MenuCaption="&amp;Link">
+                <Exec CmdLine='cc -g -o "%o" %f %libs'/>
+            </Target>
+            <Target
+                Name="Build"
+                MenuCaption="&amp;Build"
+                CaptureOutputWith="ProcessBuffer"
+                SaveOption="SaveWorkspaceFiles"
+                RunFromDir="%rw">
+                <Exec CmdLine='"%(VSLICKBIN1)vsbuild" build "%w" "%r"'/>
+            </Target>
+            <Target
+                Name="Rebuild"
+                MenuCaption="&amp;Rebuild"
+                CaptureOutputWith="ProcessBuffer"
+                SaveOption="SaveWorkspaceFiles"
+                RunFromDir="%rw">
+                <Exec CmdLine='"%(VSLICKBIN1)vsbuild" rebuild "%w" "%r"'/>
+            </Target>
+            <Target
+                Name="Debug"
+                MenuCaption="&amp;Debug"
+                SaveOption="SaveNone"
+                BuildFirst="1"
+                CaptureOutputWith="ProcessBuffer"
+                RunFromDir="%rw">
+                <Exec CmdLine='vsdebugio -prog "%o"'/>
+            </Target>
+            <Target
+                Name="Execute"
+                MenuCaption="E&amp;xecute"
+                SaveOption="SaveNone"
+                BuildFirst="1"
+                CaptureOutputWith="ProcessBuffer"
+                RunFromDir="%rw">
+                <Exec CmdLine='"%o"'/>
+            </Target>
+        </Menu>
+    </Config>
+    <Config
+        Name="Release"
+        Type="cpp"
+        DebugCallbackName="gdb"
+        OutputFile="%bdrefdes169"
+        CompilerConfigName="Latest Version">
+        <Menu>
+            <Target
+                Name="Compile"
+                MenuCaption="&amp;Compile"
+                CaptureOutputWith="ProcessBuffer"
+                SaveOption="SaveCurrent"
+                OutputExts="*.o"
+                RunFromDir="%rw">
+                <Exec CmdLine='cc -c -O %i %defd -o "%bd%n.o" "%f"'/>
+            </Target>
+            <Target
+                Name="Link"
+                MenuCaption="&amp;Link">
+                <Exec CmdLine='cc -O -o "%o" %f %libs'/>
+            </Target>
+            <Target
+                Name="Build"
+                MenuCaption="&amp;Build"
+                CaptureOutputWith="ProcessBuffer"
+                SaveOption="SaveWorkspaceFiles"
+                RunFromDir="%rw">
+                <Exec CmdLine='"%(VSLICKBIN1)vsbuild" build "%w" "%r"'/>
+            </Target>
+            <Target
+                Name="Rebuild"
+                MenuCaption="&amp;Rebuild"
+                CaptureOutputWith="ProcessBuffer"
+                SaveOption="SaveWorkspaceFiles"
+                RunFromDir="%rw">
+                <Exec CmdLine='"%(VSLICKBIN1)vsbuild" rebuild "%w" "%r"'/>
+            </Target>
+            <Target
+                Name="Debug"
+                MenuCaption="&amp;Debug"
+                SaveOption="SaveNone"
+                BuildFirst="1"
+                CaptureOutputWith="ProcessBuffer"
+                RunFromDir="%rw">
+                <Exec CmdLine='vsdebugio -prog "%o"'/>
+            </Target>
+            <Target
+                Name="Execute"
+                MenuCaption="E&amp;xecute"
+                SaveOption="SaveNone"
+                BuildFirst="1"
+                CaptureOutputWith="ProcessBuffer"
+                RunFromDir="%rw">
+                <Exec CmdLine='"%o"'/>
+            </Target>
+        </Menu>
+    </Config>
+    <Rules Name="Compile">
+        <Rule
+            InputExts="*.s"
+            OutputExts="*.o"
+            LinkObject="1">
+            <Exec CmdLine='as -o "%bd%n.o" "%f"'/>
+        </Rule>
+    </Rules>
+    <CustomFolders>
+        <Folder
+            Name="Source Files"
+            Filters="*.c;*.C;*.cc;*.cpp;*.cp;*.cxx;*.c++;*.prg;*.pas;*.dpr;*.asm;*.s;*.bas;*.java;*.cs;*.sc;*.e;*.cob;*.html;*.rc;*.tcl;*.py;*.pl;*.d;*.m;*.mm;*.go"></Folder>
+        <Folder
+            Name="Header Files"
+            Filters="*.h;*.H;*.hh;*.hpp;*.hxx;*.h++;*.inc;*.sh;*.cpy;*.if"></Folder>
+        <Folder
+            Name="Resource Files"
+            Filters="*.ico;*.cur;*.dlg"/>
+        <Folder
+            Name="Bitmaps"
+            Filters="*.bmp"/>
+        <Folder
+            Name="Other Files"
+            Filters=""/>
+    </CustomFolders>
+    <Files AutoFolders="DirectoryView">
+        <Folder Name="../">
+            <F N="../com.c"/>
+            <F N="../com.h"/>
+            <F N="../config.c"/>
+            <F N="../config.h"/>
+            <F N="../flow.c"/>
+            <F N="../flow.h"/>
+            <F N="../freertos_hooks.c"/>
+            <F N="../FreeRTOSConfig.h"/>
+            <F N="../global.h"/>
+            <F N="../main.c"/>
+            <F N="../transducer.c"/>
+            <F N="../transducer.h"/>
+            <F N="../ui.c"/>
+            <F N="../ui.h"/>
+        </Folder>
+        <Folder Name="../board">
+            <Folder Name="refdes169">
+                <Folder Name="csl">
+                    <Folder Name="CMSIS">
+                        <Folder Name="Device">
+                            <Folder Name="Maxim">
+                                <Folder Name="MAX32625">
+                                    <Folder Name="Include">
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/adc_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/aes_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/clkman_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/crc_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/flc_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/gpio_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/i2cm_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/i2cs_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/icc_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/ioman_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/maa_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/max32625.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/mxc_device.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/owm_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/pmu_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/prng_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/pt_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/pwrman_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/pwrseq_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/rtc_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/spim_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/spis_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/spix_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/sysman_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/system_max32625.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/tmr_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/tpu_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/trim_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/uart_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/usb_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/wdt2_regs.h"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Include/wdt_regs.h"/>
+                                    </Folder>
+                                    <Folder Name="Source">
+                                        <Folder Name="ARM">
+                                            <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Source/ARM/sub_main.c"/>
+                                        </Folder>
+                                        <Folder Name="IAR">
+                                            <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Source/IAR/low_level_init.c"/>
+                                        </Folder>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Source/heap.c"/>
+                                        <F N="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Source/system_max32625.c"/>
+                                    </Folder>
+                                </Folder>
+                            </Folder>
+                        </Folder>
+                        <Folder Name="Include">
+                            <F N="../board/refdes169/csl/CMSIS/Include/arm_common_tables.h"/>
+                            <F N="../board/refdes169/csl/CMSIS/Include/arm_const_structs.h"/>
+                            <F N="../board/refdes169/csl/CMSIS/Include/arm_math.h"/>
+                            <F N="../board/refdes169/csl/CMSIS/Include/core_cm3.h"/>
+                            <F N="../board/refdes169/csl/CMSIS/Include/core_cm4.h"/>
+                            <F N="../board/refdes169/csl/CMSIS/Include/core_cm4_simd.h"/>
+                            <F N="../board/refdes169/csl/CMSIS/Include/core_cmFunc.h"/>
+                            <F N="../board/refdes169/csl/CMSIS/Include/core_cmInstr.h"/>
+                        </Folder>
+                    </Folder>
+                    <Folder Name="PeriphDriver">
+                        <Folder Name="Include">
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/adc.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/aes.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/clkman.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/crc.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/flc.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/gpio.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/i2cm.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/i2cs.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/icc.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/ioman.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/lp.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/maa.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/mxc_assert.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/mxc_config.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/mxc_errors.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/mxc_lock.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/mxc_sys.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/nvic_table.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/owm.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/pmu.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/prng.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/pt.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/rtc.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/spim.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/spis.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/spix.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/tmr.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/tmr_utils.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/uart.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/wdt.h"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Include/wdt2.h"/>
+                        </Folder>
+                        <Folder Name="Source">
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/adc.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/aes.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/clkman.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/crc.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/flc.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/gpio.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/i2cm.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/i2cs.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/icc.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/ioman.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/lp.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/maa.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/mxc_assert.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/mxc_lock.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/mxc_sys.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/nvic_table.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/owm.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/pmu.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/prng.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/pt.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/rtc.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/spim.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/spis.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/spix.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/tmr.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/tmr_utils.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/uart.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/wdt.c"/>
+                            <F N="../board/refdes169/csl/PeriphDriver/Source/wdt2.c"/>
+                        </Folder>
+                    </Folder>
+                </Folder>
+                <Folder Name="max3510x">
+                    <F N="../board/refdes169/max3510x/max3510x.c"/>
+                    <F N="../board/refdes169/max3510x/max3510x.h"/>
+                    <F N="../board/refdes169/max3510x/max3510x_regs.h"/>
+                </Folder>
+                <F N="../board/refdes169/board.c"/>
+                <F N="../board/refdes169/board.h"/>
+                <F N="../board/refdes169/csl.h"/>
+                <F N="../board/refdes169/tdc.c"/>
+                <F N="../board/refdes169/tdc.h"/>
+            </Folder>
+        </Folder>
+        <Folder Name="../cw">
+            <F N="../cw/MAX32625_flash_placement.xml"/>
+            <F N="../cw/MAX32625_MemoryMap.xml"/>
+            <F N="../cw/MAX32625_Startup.s"/>
+            <F N="../cw/max32625_Vectors.s"/>
+            <F N="../cw/thumb_crt0.s"/>
+        </Folder>
+        <Folder Name="../freertos">
+            <F N="../freertos/croutine.c"/>
+            <F N="../freertos/croutine.h"/>
+            <F N="../freertos/deprecated_definitions.h"/>
+            <F N="../freertos/event_groups.c"/>
+            <F N="../freertos/event_groups.h"/>
+            <F N="../freertos/FreeRTOS.h"/>
+            <F N="../freertos/heap_4.c"/>
+            <F N="../freertos/list.c"/>
+            <F N="../freertos/list.h"/>
+            <F N="../freertos/message_buffer.h"/>
+            <F N="../freertos/mpu_prototypes.h"/>
+            <F N="../freertos/mpu_wrappers.h"/>
+            <F N="../freertos/port.c"/>
+            <F N="../freertos/portable.h"/>
+            <F N="../freertos/portmacro.h"/>
+            <F N="../freertos/projdefs.h"/>
+            <F N="../freertos/queue.c"/>
+            <F N="../freertos/queue.h"/>
+            <F N="../freertos/semphr.h"/>
+            <F N="../freertos/stack_macros.h"/>
+            <F N="../freertos/StackMacros.h"/>
+            <F N="../freertos/stream_buffer.c"/>
+            <F N="../freertos/stream_buffer.h"/>
+            <F N="../freertos/task.h"/>
+            <F N="../freertos/tasks.c"/>
+            <F N="../freertos/timers.c"/>
+            <F N="../freertos/timers.h"/>
+        </Folder>
+    </Files>
+</Project>

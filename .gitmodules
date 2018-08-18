@@ -1,0 +1,3 @@
+[submodule "board/refdes169"]
+	path = board/refdes169
+	url = git@github.com:maxim-ic-flow/refdes169_board.git

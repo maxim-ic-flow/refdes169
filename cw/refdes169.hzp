@@ -1,0 +1,169 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="refdes169" target="8" version="2">
+  <configuration Name="THUMB Debug" inherited_configurations="THUMB;Debug" />
+  <configuration
+    Name="THUMB"
+    Platform="ARM"
+    arm_instruction_set="Thumb"
+    arm_library_instruction_set="Thumb"
+    c_preprocessor_definitions="__THUMB"
+    hidden="Yes" />
+  <configuration
+    Name="Debug"
+    c_preprocessor_definitions="BOARD_DEBUG"
+    gcc_debugging_level="Level 3"
+    gcc_omit_frame_pointer="Yes"
+    gcc_optimization_level="None"
+    hidden="Yes" />
+  <configuration
+    Name="THUMB Release"
+    inherited_configurations="THUMB;Release" />
+  <configuration
+    Name="Release"
+    c_preprocessor_definitions=""
+    gcc_debugging_level="None"
+    gcc_omit_frame_pointer="Yes"
+    gcc_optimization_level="Level 1"
+    hidden="Yes" />
+  <configuration
+    Name="Common"
+    c_preprocessor_definitions="STARTUP_FROM_RESET;$(BOARD)"
+    c_user_include_directories="$(DeviceIncludePath);../board/$(BOARD);../board/$(BOARD)/max3510x;../board/$(BOARD)/csl/PeriphDriver/Include;../board/$(BOARD)/csl/PeriphDriver/;../board/$(BOARD)/csl/CMSIS/Include;.." />
+  <project Name="refdes169">
+    <configuration
+      CMSIS_CORE="No"
+      Name="Common"
+      Placement="Flash"
+      Target="MAX32625"
+      arm_architecture="v7EM"
+      arm_core_type="Cortex-M4"
+      arm_endian="Little"
+      arm_fp_abi="Hard"
+      arm_fpu_type="FPv4-SP-D16"
+      arm_interwork="No"
+      arm_linker_heap_size="0"
+      arm_linker_process_stack_size="0"
+      arm_linker_stack_size="1024"
+      arm_simulator_memory_simulation_filename="$(TargetsDir)/MAX32625/Simulator/MAX32625_SimulatorMemory_$(HostOS)_$(HostArch)$(HostDLLExt)"
+      arm_simulator_memory_simulation_parameter="MAX32625;FLASH,0x00000000,0x00080000,ROM;RAM,0x20000000,0x00028000,RAM"
+      arm_target_debug_interface_type="ADIv5"
+      arm_target_interface_type="SWD"
+      arm_target_loader_applicable_loaders="Flash"
+      arm_target_loader_default_loader="Flash"
+      c_preprocessor_definitions="TARGET=MAX32625 ;TARGET_REV=0x4132;MAX35104"
+      c_user_include_directories="$(DeviceIncludePath);../freertos"
+      debug_register_definition_file="$(DeviceRegisterDefinitionFile)"
+      gcc_entry_point="Reset_Handler"
+      gcc_optimization_level="None"
+      linker_additional_files="../board/$(BOARD)/csl/CMSIS/Lib/GCC/libarm_cortexM4lf_math.a"
+      linker_memory_map_file="$(DeviceMemoryMapFile)"
+      linker_printf_fmt_level="int"
+      linker_printf_fp_enabled="Float"
+      linker_scanf_character_group_matching_enabled="No"
+      linker_section_placement_file="MAX32625_flash_placement.xml"
+      macros="DeviceIncludePath=$(TargetsDir)/MAX32625/CMSIS/Libraries/Device/Maxim/MAX32625/Include;DeviceHeaderFile=$(TargetsDir)/MAX32625/CMSIS/Libraries/Device/Maxim/MAX32625/Include/max32625.h;DeviceLoaderFile=$(TargetsDir)/MAX32625/Loader/MAX32625_Loader.elf;DeviceMemoryMapFile=$(TargetsDir)/MAX32625/XML/MAX32625_MemoryMap.xml;DeviceRegisterDefinitionFile=$(TargetsDir)/MAX32625/XML/max32625_Registers.xml;DeviceSystemFile=$(TargetsDir)/MAX32625/CMSIS/Libraries/Device/Maxim/MAX32625/Source/system_max32625.c;DeviceVectorsFile=$(TargetsDir)/MAX32625/Source/max32625_Vectors.s;DeviceFamily=MAX32625;BOARD=refdes169"
+      package_dependencies="MAX32625"
+      project_directory=""
+      project_type="Executable"
+      property_groups_file_path="$(TargetsDir)/MAX32625/XML/property_groups.xml"
+      target_get_partname_script="GetPartName()"
+      target_match_partname_script="MatchPartName(&quot;$(Target)&quot;)"
+      target_reset_script="Reset();"
+      target_trace_initialize_script="EnableTrace(&quot;$(TraceInterfaceType)&quot;)" />
+    <configuration
+      Name="Flash"
+      arm_target_flash_loader_file_path="$(DeviceLoaderFile)" />
+    <folder Name="CMSIS Files">
+      <file file_name="$(DeviceHeaderFile)" />
+      <file file_name="$(DeviceSystemFile)">
+        <configuration
+          Name="Common"
+          default_code_section=".init"
+          default_const_section=".init_rodata" />
+      </file>
+    </folder>
+    <folder Name="Script Files">
+      <file file_name="$(TargetsDir)/MAX32625/Scripts/MAX32625_Target.js">
+        <configuration Name="Common" file_type="Reset Script" />
+      </file>
+    </folder>
+    <folder Name="System Files">
+      <file file_name="thumb_crt0.s" />
+      <file file_name="MAX32625_Startup.s" />
+      <file file_name="max32625_Vectors.s">
+        <configuration Name="Common" file_type="Assembly" />
+      </file>
+      <file file_name="MAX32625_MemoryMap.xml" />
+      <file file_name="MAX32625_flash_placement.xml" />
+    </folder>
+    <configuration Name="Debug" c_preprocessor_definitions="BOARD_DEBUG" />
+    <configuration Name="Release" c_preprocessor_definitions="" />
+    <folder Name="board">
+      <file file_name="../board/refdes169/board.c" />
+      <file file_name="../board/refdes169/board.h" />
+      <folder Name="csl">
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/clkman.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/gpio.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/spim.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/tmr.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/uart.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/mxc_lock.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/mxc_sys.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/ioman.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/flc.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/pmu.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/rtc.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/lp.c" />
+        <file file_name="../board/refdes169/csl/PeriphDriver/Source/crc.c" />
+      </folder>
+      <folder Name="max3510x">
+        <file file_name="../board/refdes169/max3510x/max3510x.c" />
+        <file file_name="../board/refdes169/max3510x/max3510x.h" />
+        <file file_name="../board/refdes169/max3510x/max3510x_regs.h" />
+      </folder>
+      <file file_name="../board/refdes169/tdc.c" />
+      <file file_name="../board/refdes169/tdc.h" />
+    </folder>
+    <file file_name="../main.c" />
+    <file file_name="../global.h" />
+    <folder Name="FreeRTOS">
+      <file file_name="../freertos/croutine.c" />
+      <file file_name="../freertos/event_groups.c" />
+      <file file_name="../freertos/heap_4.c" />
+      <file file_name="../freertos/list.c" />
+      <file file_name="../freertos/port.c" />
+      <file file_name="../freertos/queue.c" />
+      <file file_name="../freertos/stream_buffer.c">
+        <configuration Name="Common" gcc_optimization_level="None" />
+      </file>
+      <file file_name="../freertos/tasks.c" />
+      <file file_name="../freertos/timers.c" />
+      <file file_name="../freertos/croutine.h" />
+      <file file_name="../freertos/deprecated_definitions.h" />
+      <file file_name="../freertos/event_groups.h" />
+      <file file_name="../freertos/FreeRTOS.h" />
+      <file file_name="../freertos/list.h" />
+      <file file_name="../freertos/message_buffer.h" />
+      <file file_name="../freertos/mpu_prototypes.h" />
+      <file file_name="../freertos/mpu_wrappers.h" />
+      <file file_name="../freertos/portable.h" />
+      <file file_name="../freertos/portmacro.h" />
+      <file file_name="../freertos/projdefs.h" />
+      <file file_name="../freertos/queue.h" />
+      <file file_name="../freertos/semphr.h" />
+      <file file_name="../freertos/stack_macros.h" />
+      <file file_name="../freertos/StackMacros.h" />
+      <file file_name="../freertos/stream_buffer.h" />
+      <file file_name="../freertos/task.h" />
+      <file file_name="../freertos/timers.h" />
+    </folder>
+    <file file_name="../freertos_hooks.c" />
+    <file file_name="../FreeRTOSConfig.h" />
+    <file file_name="../com.c" />
+    <file file_name="../com.h" />
+    <file file_name="../flow.c" />
+    <file file_name="../ui.c" />
+    <file file_name="../config.c" />
+    <file file_name="../transducer.c" />
+  </project>
+</solution>
