@@ -55,9 +55,9 @@ static void task_flow( void * pv )
         xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
         if( !s_temp_prescaler )
             tdc_cmd_temperature();
+            tdc_get_tof_result( &result.tof_result );
         if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO | MAX3510X_REG_INTERRUPT_STATUS_TOF)) == MAX3510X_REG_INTERRUPT_STATUS_TOF )
         {
-            tdc_get_tof_result( &result.tof_result );
             transducer_compensated_tof( &s_last_prod, &s_last_up, &s_last_down, result.tof_result.tof.up.hit, result.tof_result.tof.down.hit );
             s_sum_up += s_last_up;
             s_sum_down += s_last_down;
