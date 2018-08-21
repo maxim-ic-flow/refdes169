@@ -36,12 +36,12 @@ static uint64_t s_sum_down;
 static uint64_t s_sum_prod;
 static uint16_t	s_temp_prescaler;
 
-#define TOFS_PER_TEMP	5
+#define TOFS_PER_TEMP	(5*FLOW_SAMPLE_CLOCK_HZ)    // 5 per second
 
 
 static void task_flow( void * pv )
 {
-    static tdc_result_t result; 
+    static tdc_result_t result;
     static QueueSetMemberHandle_t qs;
 
     tdc_configure( config_load() );
@@ -53,33 +53,35 @@ static void task_flow( void * pv )
 
         tdc_cmd_tof_diff();
         xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
-		if( !s_temp_prescaler )
-			tdc_cmd_temperature();
-		tdc_get_tof_result( &result.tof_result );
-		if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO|MAX3510X_REG_INTERRUPT_STATUS_TOF)) == MAX3510X_REG_INTERRUPT_STATUS_TOF)
-		{
-			transducer_compensated_tof( &s_last_prod, &s_last_up, &s_last_down, result.tof_result.tof.up.hit, result.tof_result.tof.down.hit );
+        if( !s_temp_prescaler )
+            tdc_cmd_temperature();
+        if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO | MAX3510X_REG_INTERRUPT_STATUS_TOF)) == MAX3510X_REG_INTERRUPT_STATUS_TOF )
+        {
+            tdc_get_tof_result( &result.tof_result );
+            transducer_compensated_tof( &s_last_prod, &s_last_up, &s_last_down, result.tof_result.tof.up.hit, result.tof_result.tof.down.hit );
             s_sum_up += s_last_up;
-			s_sum_down += s_last_down;
-			s_sum_prod += s_last_prod;
+            s_sum_down += s_last_down;
+            s_sum_prod += s_last_prod;
 
 //			flow = transducer_flow_compensate( flow );
 
             //q31_t volume = transducer_volume( flow, )
         }
-		if( !s_temp_prescaler )
-		{
-			xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
-			if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO|MAX3510X_REG_INTERRUPT_STATUS_TE)) == MAX3510X_REG_INTERRUPT_STATUS_TE)
-			{
-				uint32_t t1 = max3510x_fixed_to_time( &result.temperature_result.temperature[0] );
-				uint32_t t2 = max3510x_fixed_to_time( &result.temperature_result.temperature[1] );
+        if( !s_temp_prescaler )
+        {
+            xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
+            tdc_get_temperature_result( &result.temperature_result );
 
-			}
-		}
-		if( ++s_temp_prescaler >= TOFS_PER_TEMP )
-			s_temp_prescaler = 0;
-		com_report( &result );
+            if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO | MAX3510X_REG_INTERRUPT_STATUS_TE)) == MAX3510X_REG_INTERRUPT_STATUS_TE )
+            {
+                uint32_t t1 = max3510x_fixed_to_time( &result.temperature_result.temperature[0] );
+                uint32_t t2 = max3510x_fixed_to_time( &result.temperature_result.temperature[1] );
+
+            }
+        }
+        if( ++s_temp_prescaler >= TOFS_PER_TEMP )
+            s_temp_prescaler = 0;
+        com_report( &result );
     }
 }
 
