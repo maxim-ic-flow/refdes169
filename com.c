@@ -1714,9 +1714,7 @@ static void task_com( void *pv )
 {
 	
 	static uint8_t rx[RX_MAX_MSG_SIZE];
-	static com_report_t report;
-	const struct _tdc_tof_native_t * p_sample = &report.sample.tof.native;
-
+	static tdc_result_t result;
     static uart_req_t req =
     {
         .data = uart_rx_buf,
@@ -1732,21 +1730,33 @@ static void task_com( void *pv )
 		qs = xQueueSelectFromSet( s_queue_set, portMAX_DELAY );
 		if( qs == s_report_queue  )
 		{
-			xQueueReceive( s_report_queue, &report, 0 );
-			if(  s_print_reports )
+			xQueueReceive( s_report_queue, &result, 0 );
+			if( s_print_reports )
 			{
-				com_printf( "r" );
-				for(uint8_t i=0;i<MAX3510X_MAX_HITCOUNT;i++)
+                if( result.status & MAX3510X_REG_INTERRUPT_STATUS_TOF )
 				{
-					com_printf( "%4.4X%4.4X", p_sample->up.hit[i].integer, p_sample->up.hit[i].fraction );
+					static const tof_result_t *p_sample = &result.tof_result.tof;
+					com_printf( "r" );
+					for(uint8_t i=0;i<MAX3510X_MAX_HITCOUNT;i++)
+					{
+						com_printf( "%4.4X%4.4X", p_sample->up.hit[i].integer, p_sample->up.hit[i].fraction );
+					}
+					com_printf("%2.2X", p_sample->up.t1_t2);
+					for(uint8_t i=0;i<MAX3510X_MAX_HITCOUNT;i++)
+					{
+						com_printf( "%4.4X%4.4X", p_sample->down.hit[i].integer, p_sample->down.hit[i].fraction );
+					}
+					com_printf("%2.2X", p_sample->down.t1_t2);
+					com_printf("\r\n");
 				}
-				com_printf("%2.2X", p_sample->up.t1_t2);
-				for(uint8_t i=0;i<MAX3510X_MAX_HITCOUNT;i++)
+				if( result.status & MAX3510X_REG_INTERRUPT_STATUS_TE )
 				{
-					com_printf( "%4.4X%4.4X", p_sample->down.hit[i].integer, p_sample->down.hit[i].fraction );
+					
+					com_printf( "t" );
+					for(uint8_t i=0;i<2;i++)
+						com_printf( "%4.4X%4.4X", result.temperature_result.temperature[i].integer, result.temperature_result.temperature[i].fraction );
+					com_printf("\r\n");
 				}
-				com_printf("%2.2X", p_sample->down.t1_t2);
-				com_printf("\r\n");
 			}
 		}
 		else if( qs == s_rx_semaphore )
@@ -1766,6 +1776,7 @@ static void task_com( void *pv )
 		}
 	};
 }
+
 void com_init( void )
 {
 	s_queue_set = xQueueCreateSet(8);
@@ -1774,7 +1785,7 @@ void com_init( void )
 	configASSERT(s_tx_semaphore);
 	s_rx_semaphore = xSemaphoreCreateBinary();
 	configASSERT(s_rx_semaphore);
-	s_report_queue = xQueueCreate( REPORT_MESSAGE_COUNT, sizeof(com_report_t) );
+	s_report_queue = xQueueCreate( REPORT_MESSAGE_COUNT, sizeof(tdc_result_t) );
 	configASSERT(s_report_queue);
     s_tx_circbuf = xStreamBufferCreate( TX_CIRCBUFF_SIZE, 1 );
 	configASSERT(s_tx_circbuf);
@@ -1787,9 +1798,10 @@ void com_init( void )
     xTaskCreate( task_com, "com", TASK_DEFAULT_STACK_SIZE, NULL, TASK_DEFAULT_PRIORITY, NULL );
 }
 
-void com_report( const com_report_t * p_report )
+void com_report( const tdc_result_t * p_report )
 {
-	xQueueSend( s_report_queue, p_report, 0 );
+	if( s_print_reports )
+		xQueueSend( s_report_queue, p_report, 0 );
 }
 
 

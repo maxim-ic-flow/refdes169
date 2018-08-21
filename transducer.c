@@ -92,29 +92,24 @@ static const max3510x_registers_t s_config[1] =
 		
             MAX3510X_REG_SET( TOF7_C_OFFSETDNR, 0 )|
             MAX3510X_REG_SET( TOF7_C_OFFSETDN, DEFAULT_T1_THRESHOLD ),
-    #ifdef MAX35103
-            MAX3510X_REG_SET( EVENT_TIMING_1_TDF, MAX3510X_REG_EVENT_TIMING_1_TDF_S(0, 0.5 ) ) |	// event mode tof diff samples at 2Hz
-            MAX3510X_REG_SET( EVENT_TIMING_1_TMF, MAX3510X_REG_EVENT_TIMING_1_TMF_S(0, 1.0 ) ) |	// event mode temperature samples at 1Hz
-    #else
-            MAX3510X_REG_SET( EVENT_TIMING_1_TDF, MAX3510X_REG_EVENT_TIMING_1_TDF_S( 0.5 ) ) |	// event mode tof diff samples at 2Hz
+            MAX3510X_REG_SET( EVENT_TIMING_1_TDF, MAX3510X_REG_EVENT_TIMING_1_TDF_S( 1.0 ) ) |	// event mode tof diff samples at 1Hz
             MAX3510X_REG_SET( EVENT_TIMING_1_TMF, MAX3510X_REG_EVENT_TIMING_1_TMF_S( 1.0 ) ) |	// event mode temperature samples at 1Hz
-    #endif
-            MAX3510X_REG_SET( EVENT_TIMING_1_TDM, MAX3510X_REG_EVENT_TIMING_1_TDM_C( 1 ) ),		// event mode tof diff collects a single tof diff measurement per cycle
+            MAX3510X_REG_SET( EVENT_TIMING_1_TDM, MAX3510X_REG_EVENT_TIMING_1_TDM_C( 1 ) ),		// event mode tof diff collects a single tof diff measurement per sequence
 		
-            MAX3510X_REG_SET( EVENT_TIMING_2_TMM, MAX3510X_REG_EVENT_TIMING_2_TMM_C( 1 ) )|     // event mode temperature collects a single temperatuer measurement per cycle
+            MAX3510X_REG_SET( EVENT_TIMING_2_TMM, MAX3510X_REG_EVENT_TIMING_2_TMM_C( 1 ) )|     // event mode temperature collects a single temperature measurement per sequence
             MAX3510X_BF( EVENT_TIMING_2_CAL_USE, ENABLED )|                                    	// calibration values are applied to measurement results
             MAX3510X_BF( EVENT_TIMING_2_CAL_CFG, DISABLED )|                                   	// calibration is driven by the host cpu.
             MAX3510X_REG_SET( EVENT_TIMING_2_PRECYC, 1 )|
-            MAX3510X_BF( EVENT_TIMING_2_PORTCYC, 512US ),										// minimize cycle time
+            MAX3510X_BF( EVENT_TIMING_2_PORTCYC, 128US ),										// minimize cycle time
 
             MAX3510X_REG_SET( TOF_MEASUREMENT_DELAY_DLY, MAX3510X_REG_TOF_MEASUREMENT_DELAY_DLY_US( 200 ) ),   // receiption squelch time
 		
             MAX3510X_BF( CALIBRATION_CONTROL_CMP_EN, ENABLED )|     // the output of the comparator is applied to the CMP_OUT pin (TP1)
             MAX3510X_BF( CALIBRATION_CONTROL_CMP_SEL, CMP_EN )|     // enable the CMP_OUT pin
             MAX3510X_BF( CALIBRATION_CONTROL_INT_EN, ENABLED )|     // enable the MAX35104 to issue interrupts via the INT pin
-            MAX3510X_BF( CALIBRATION_CONTROL_ET_CONT, ENABLED )|    // event modes operate until a HALT command is sent
+            MAX3510X_BF( CALIBRATION_CONTROL_ET_CONT, DISABLED )|    // one-shot event mode
             MAX3510X_BF( CALIBRATION_CONTROL_CONT_INT, DISABLED )|	// event modes generate an interrupt at the end of the complete sequence
-            MAX3510X_BF( CALIBRATION_CONTROL_CLK_S, CONTINUOUS )|   // 4MHz clock on all the time
+            MAX3510X_BF( CALIBRATION_CONTROL_CLK_S, 1046US )|   
             MAX3510X_BF( CALIBRATION_CONTROL_CAL_PERIOD, MAX ),		// calibration time MAX=488us
 		
             MAX3510X_BF( RTC_32K_BP, DISABLED )|       // using a 32.768kHz crystal
