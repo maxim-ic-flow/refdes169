@@ -34,10 +34,11 @@
 #ifndef _TRANSDUCER_H_
 
 #include "max3510x.h"
+#include "arm_math.h"
 
 const max3510x_registers_t * transducer_config( uint8_t ndx );
 uint32_t transducer_offset_and_scale( const max3510x_fixed_t *p_fixed );
-void transducer_compensated_tof( uint32_t *p_prod, uint32_t *p_up, uint32_t *p_down, const max3510x_fixed_t up[MAX3510X_MAX_HITCOUNT], const max3510x_fixed_t down[MAX3510X_MAX_HITCOUNT] );
+void transducer_compensated_tof( q31_t *p_prod, q31_t *p_up, q31_t *p_down, const max3510x_fixed_t up[MAX3510X_MAX_HITCOUNT], const max3510x_fixed_t down[MAX3510X_MAX_HITCOUNT] );
 
 #endif
 

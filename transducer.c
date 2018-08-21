@@ -33,6 +33,7 @@
 
 #include "global.h"
 #include "board.h"
+#include "transducer.h"
 
 // physical characteristics of the transducers and flowbody
 // These default settings may not be appropriate for your transducer configuration
@@ -131,7 +132,9 @@ const max3510x_registers_t* transducer_config( uint8_t ndx )
 }
 
 #define FP_OFFSET 0x1E848B26
+
 #define FP_BIAS   5
+
 #define TEMP_COMP_C1    1
 #define TEMP_COMP_C2    0
 
@@ -165,17 +168,17 @@ uint32_t transducer_tof_from_hits( const max3510x_fixed_t hits[MAX3510X_MAX_HITC
     return (sum - FP_OFFSET ) << FP_BIAS;
 }
 
-void transducer_compensated_tof( uint32_t *p_prod, uint32_t *p_up, uint32_t *p_down, const max3510x_fixed_t up[MAX3510X_MAX_HITCOUNT], const max3510x_fixed_t down[MAX3510X_MAX_HITCOUNT] )
+void transducer_compensated_tof( q31_t *p_prod, q31_t *p_up, q31_t *p_down, const max3510x_fixed_t up[MAX3510X_MAX_HITCOUNT], const max3510x_fixed_t down[MAX3510X_MAX_HITCOUNT] )
 {
-    uint32_t upp;
-    uint32_t downn;
+    q31_t upp;
+    q31_t downn;
 
     upp = transducer_tof_from_hits( up );
     downn = transducer_tof_from_hits( down );
     uint32_t ap = aggregate_period( p_up, p_down );
     *p_up = upp * TEMP_COMP_C1 + TEMP_COMP_C2;
     *p_down = downn * TEMP_COMP_C1 + TEMP_COMP_C2;
-    *p_prod = ((uint64_t)upp * downn) >> 30;
+    *p_prod = ((q63_t)upp * downn) >> 30;
 
 }
 

@@ -3,6 +3,7 @@
 #include "board.h"
 #include "tdc.h"
 #include "config.h"
+#include "flow.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -24,20 +25,20 @@
 
 #define REPORT_MESSAGE_COUNT	4
 
-
+static report_type_t s_report_type;
 
 static QueueSetHandle_t 		s_queue_set;
 static StreamBufferHandle_t     s_tx_circbuf;
 static StreamBufferHandle_t     s_rx_circbuf;
-static QueueHandle_t 		    s_report_queue;
+static StreamBufferHandle_t     s_report_buffer;
 static SemaphoreHandle_t        s_tx_semaphore;
 static SemaphoreHandle_t        s_rx_semaphore;
-
+static SemaphoreHandle_t        s_report_semaphore;
 
 static char 		s_rx_buf[RX_MAX_MSG_SIZE];
 static uint8_t 		s_rx_ndx;
 static bool			s_output;
-static bool 		s_print_reports;
+
 
 typedef struct _enum_t
 {
@@ -148,8 +149,6 @@ static bool binary( const char * p_arg, uint16_t * p_reg_value )
         return false;
     return true;
 }
-
-#if defined(MAX35104)
 
 static const enum_t s_sfreq_enum[] =
 {
@@ -554,8 +553,6 @@ static void bp_bp_get( void )
     uint16_t r = tdc_get_bp_bp();
     com_printf( "filter %s (%d)\r\n", r == MAX3510X_REG_AFE2_BP_BYPASS_ENABLED ? "bypassed" : "enabled", r );
 }
-
-#endif //  MAX35104
 
 static bool pl_set( const char * p_arg )
 {
@@ -1450,11 +1447,21 @@ static bool spi_test_cmd( const char * p_arg )
     return true;
 }
 
-static bool results_report_cmd( const char * p_arg )
+static const enum_t s_report_type_enum[] =
 {
-    //s_time = 0;
-    s_print_reports = true;
-    return true;
+    { "raw", (uint16_t)report_type_raw },
+    { "fixed", (uint16_t)report_type_fixed },
+};
+
+static bool report( const char * p_arg )
+{
+    uint16_t result;
+    if( get_enum_value( p_arg, s_report_type_enum, ARRAY_COUNT( s_report_type_enum ), &result ) )
+    {
+        s_report_type = (report_type_t)result;
+        return true;
+    }
+    return false;
 }
 
 
@@ -1479,9 +1486,36 @@ static bool zero_cmd( const char * p_arg )
 
     if( !samples )
         samples = 128;
-
 }
 
+static void tempr_get( void )
+{
+    com_printf( "%d\r\n", flow_get_temp_sampling_ratio() );
+}
+
+static bool tempr_set( const char * p_arg )
+{
+    uint16_t ratio = atoi( p_arg );
+    flow_set_temp_sampling_ratio( ratio );
+    return true;
+}
+
+static void tofsr_get( void )
+{
+    com_printf( "%d Hz\r\n", board_get_sampling_frequency() );
+}
+
+static bool tofsr_set( const char * p_arg )
+{
+    uint8_t freq = atoi( p_arg );
+    if( freq > 128 )
+    {
+        com_printf( "sampling frequency must be 0Hz to 128Hz\r\n" );
+        return false;
+    }
+    board_set_sampling_frequency( freq );
+    return true;
+}
 
 static bool help_cmd( const char * p_arg );
 static bool dc_cmd( const char * p_arg );
@@ -1538,9 +1572,6 @@ static const cmd_t s_cmd[] =
     { "am", "alarm control:  none, minutes, hours, or both", am_set, am_get },
     { "wf", "watchdog flag:  0=reset", wf_set, wf_get },
     { "wd_en", "watchdog enable:  1=enabled, 0=disabled", wd_en_set, wd_en_get },
-
-
-
     // chip commands
 
 //	{ "event", "start event timing mode: tof, temp, or both", start_event_cmd, NULL },
@@ -1562,11 +1593,11 @@ static const cmd_t s_cmd[] =
     { "reset", "reset command", reset_cmd, NULL },
     { "save", "save configuration to flash", save_config, NULL },
     { "spi_test", "perform's a write/read verification test on the max3510x", spi_test_cmd, NULL },
-    //{ "tof_temp", "number of tof measurements for each temperature measurement", tof_temp_set, tof_temp_get },
+    { "tempr", "number of tof measurements for each temperature measurement", tempr_set, tempr_get },
     { "default", "restore configuration defaults", default_cmd, NULL },
     //{ "mode", "select sampling mode: event, host, max, idle", mode_set, mode_get },
-    //{ "sampling", "host mode sampling frequency", sampling_set, sampling_get },
-    { "report", "turn on sample reports until a key is pressed", results_report_cmd, NULL },
+    { "tofsr", "host mode sampling frequency (1-128 Hz)", tofsr_set, tofsr_get },
+    { "report", "turn on sample reports until a key is pressed:  raw, fixed, or none", report, NULL },
     { "help", "you're looking at it", help_cmd, NULL }
 };
 
@@ -1576,17 +1607,19 @@ static void command( uint8_t c )
     s_output = false;
     if( escape( c ) )
     {
-        if( s_print_reports )
+        if( s_report_type )
         {
-            s_print_reports = false;
+            s_report_type = report_type_none;
             com_printf( "\33[2K\r" );
         }
         return;
     }
-    if( s_print_reports )
+    if( s_report_type )
     {
-        s_print_reports = false;
+        s_report_type = report_type_none;
         com_printf( "\33[2K\r> " );
+        if( c == '\r' )
+            return;
     }
     com_printf( "%c", c );
     if( c == '\r' )
@@ -1663,7 +1696,7 @@ static void command( uint8_t c )
                     else
                     {
                         record_command();
-                        if( !s_print_reports )
+                        if( !s_report_type )
                             com_printf( "> " );
                     }
                     b = true;
@@ -1712,7 +1745,7 @@ static void task_com( void * pv )
 {
 
     static uint8_t rx[RX_MAX_MSG_SIZE];
-    static tdc_result_t result;
+    static com_report_t report;
     static uart_req_t req =
     {
         .data = uart_rx_buf,
@@ -1726,14 +1759,17 @@ static void task_com( void * pv )
     while( 1 )
     {
         qs = xQueueSelectFromSet( s_queue_set, portMAX_DELAY );
-        if( qs == s_report_queue  )
+        if( qs == s_report_semaphore  )
         {
-            xQueueReceive( s_report_queue, &result, 0 );
-            if( s_print_reports )
+            xSemaphoreTake( s_report_semaphore, 0 );
+            xStreamBufferReceive( s_report_buffer , &s_report_type, sizeof(report_type_t), 0 );
+            if( s_report_type == report_type_raw )
             {
-                if( result.status & MAX3510X_REG_INTERRUPT_STATUS_TOF )
+                static const tdc_result_t * p = &report.raw;
+                xStreamBufferReceive( s_report_buffer, &report, sizeof(report.raw), 0 );
+                if( p->status & MAX3510X_REG_INTERRUPT_STATUS_TOF )
                 {
-                    static const tof_result_t * p_sample = &result.tof_result.tof;
+                    static const tof_result_t * p_sample = &report.raw.tof_result.tof;
                     com_printf( "r" );
                     for( uint8_t i = 0; i < MAX3510X_MAX_HITCOUNT; i++ )
                     {
@@ -1747,13 +1783,22 @@ static void task_com( void * pv )
                     com_printf( "%2.2X", p_sample->down.t1_t2 );
                     com_printf( "\r\n" );
                 }
-                if( result.status & MAX3510X_REG_INTERRUPT_STATUS_TE )
+                if( p->status & MAX3510X_REG_INTERRUPT_STATUS_TE )
                 {
 
                     com_printf( "t" );
-                    for( uint8_t i = 0; i < 2; i++ ) com_printf( "%4.4X%4.4X", result.temperature_result.temperature[i].integer, result.temperature_result.temperature[i].fraction );
+                    for( uint8_t i = 0; i < 2; i++ ) com_printf( "%4.4X%4.4X", p->temperature_result.temperature[i].integer, p->temperature_result.temperature[i].fraction );
                     com_printf( "\r\n" );
                 }
+            }
+            else if( s_report_type == report_type_fixed )
+            {
+                xStreamBufferReceive( s_report_buffer, &report, sizeof(report.fixed), 0 );
+                com_printf("f%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X\r\n", 
+                    (uint32_t)(report.fixed.up>>32), (uint32_t)report.fixed.up,
+                    (uint32_t)(report.fixed.down>>32), (uint32_t)report.fixed.down, 
+                    (uint32_t)(report.fixed.product>>32), (uint32_t)report.fixed.product, 
+                    report.fixed.last.up, report.fixed.last.down, report.fixed.last.product );
             }
         }
         else if( qs == s_rx_semaphore )
@@ -1774,6 +1819,8 @@ static void task_com( void * pv )
     };
 }
 
+#define MAX_QUEUED_REPORTS    8
+
 void com_init( void )
 {
     s_queue_set = xQueueCreateSet( 8 );
@@ -1782,23 +1829,46 @@ void com_init( void )
     configASSERT( s_tx_semaphore );
     s_rx_semaphore = xSemaphoreCreateBinary();
     configASSERT( s_rx_semaphore );
-    s_report_queue = xQueueCreate( REPORT_MESSAGE_COUNT, sizeof(tdc_result_t) );
-    configASSERT( s_report_queue );
+    s_report_semaphore = xSemaphoreCreateCounting(MAX_QUEUED_REPORTS,0);
+    configASSERT( s_report_semaphore );
+    s_report_buffer = xStreamBufferCreate( MAX_QUEUED_REPORTS*(sizeof(com_report_t)+sizeof(report_type_t)), 0 );
+    configASSERT( s_report_buffer );
     s_tx_circbuf = xStreamBufferCreate( TX_CIRCBUFF_SIZE, 1 );
     configASSERT( s_tx_circbuf );
     s_rx_circbuf = xStreamBufferCreate( RX_CIRCBUFF_SIZE, 1 );
     configASSERT( s_rx_circbuf );
 
-    xQueueAddToSet( s_report_queue, s_queue_set );
+    xQueueAddToSet( s_report_semaphore, s_queue_set );
     xQueueAddToSet( s_rx_semaphore, s_queue_set );
 
     xTaskCreate( task_com, "com", TASK_DEFAULT_STACK_SIZE, NULL, TASK_DEFAULT_PRIORITY, NULL );
 }
 
-void com_report( const tdc_result_t * p_report )
+void com_report( report_type_t type, const com_report_t *p_report )
 {
-    if( s_print_reports )
-        xQueueSend( s_report_queue, p_report, 0 );
+    size_t s;
+    uint16_t size;
+    switch( type )
+    {
+        case report_type_raw:
+            size = sizeof(tdc_result_t);
+            break;
+        case report_type_fixed:
+            size = sizeof(flow_accmulation_t);
+            break;
+        default:
+            type = report_type_none;
+            break;
+    }
+    if( s_report_type != report_type_none && s_report_type == type )
+    {
+        if(  xStreamBufferSpacesAvailable( s_report_buffer ) >= sizeof(type)+size )
+        {
+            xStreamBufferSend( s_report_buffer, &type, sizeof(type), 0 );
+            xStreamBufferSend( s_report_buffer, p_report, size, 0 );
+            xSemaphoreGive( s_report_semaphore );
+        }
+    }
 }
 
 
