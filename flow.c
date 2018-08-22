@@ -32,6 +32,27 @@ void flow_sample_clock( void )
 static uint16_t s_temp_prescaler;
 static uint16_t s_temp_ratio;
 
+static void tof_and_period( q31_t *p_toff, q31_t *p_period, const max3510x_fixed_t *p_hits )
+{
+    // returns metrics proportional to oscillation period and time-of-flight
+
+    uint8_t i;
+    q31_t sum ;
+    q31_t h1, h2;
+    q31_t diff = 0;
+
+    sum = h1 = max3510x_fixed_to_time( p_hits );
+    for(i=1;i<MAX3510X_MAX_HITCOUNT;i++)
+    {
+        h2 = max3510x_fixed_to_time( &p_hits[i] );
+        sum += h2;
+        diff += h2 - h1;
+        h1 = h2;
+    }
+    *p_period = diff;
+    *p_toff = sum;
+}
+
 static void task_flow( void * pv )
 {
     static tdc_result_t result;
@@ -53,8 +74,22 @@ static void task_flow( void * pv )
         tdc_get_tof_result( &result.tof_result );
         if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO | MAX3510X_REG_INTERRUPT_STATUS_TOF)) == MAX3510X_REG_INTERRUPT_STATUS_TOF )
         {
+            q31_t tof_up, period_up, tof_down, period_down;
+            q31_t tof_up_inv, tof_down_inv;
+            tof_and_period( &tof_up, &period_up, result.tof_result.tof.up.hit );
+            tof_and_period( &tof_down, &period_down, result.tof_result.tof.down.hit );
+            
+            tof_up <<= 6;
+            tof_down <<= 6;
+             
+            arm_recip_q31( tof_up, &tof_up_inv, armRecipTableQ31 );
+            arm_recip_q31( tof_down, &tof_down_inv, armRecipTableQ31 );
+            
+            q31_t flow2 = tof_down_inv - tof_up_inv;  // this quantity is proportional to linear and volumetric flow
+            
             transducer_compensated_tof( &acc.last.product, &acc.last.up, &acc.last.down, result.tof_result.tof.up.hit, result.tof_result.tof.down.hit );
-
+ 
+            
             acc.up += acc.last.up;
             acc.down += acc.last.down;
             acc.product += acc.last.product;
