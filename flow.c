@@ -5,16 +5,23 @@
 #include "com.h"
 #include "config.h"
 #include "tdc.h"
-#include "arm_math.h"
-#include "arm_common_tables.h"
+#include "wave_track.h"
+
 
 static SemaphoreHandle_t        s_sample_clock_semaphore;
 static SemaphoreHandle_t        s_sample_ready_semaphore;
+static SemaphoreHandle_t        s_flow_semaphore;
+static bool                     s_sampling;
+static uint8_t 					s_offset_up_pending;
+static uint8_t 					s_offset_down_pending;
+static wave_track_t 			s_up, s_down;
+
 
 void flow_sample_complete( void )
 {
     // ISR context
     static BaseType_t woken = pdFALSE;
+
     xSemaphoreGiveFromISR( s_sample_ready_semaphore, &woken );
     portYIELD_FROM_ISR( woken );
 }
@@ -29,95 +36,198 @@ void flow_sample_clock( void )
 }
 
 
-static uint16_t s_temp_prescaler;
-static uint16_t s_temp_ratio;
+static uint32_t s_ratio_counter;
 
-static void tof_and_period( q31_t *p_toff, q31_t *p_period, const max3510x_fixed_t *p_hits )
+
+typedef struct _counter_t
 {
-    // returns metrics proportional to oscillation period and time-of-flight
-
-    uint8_t i;
-    q31_t sum ;
-    q31_t h1, h2;
-    q31_t diff = 0;
-
-    sum = h1 = max3510x_fixed_to_time( p_hits );
-    for(i=1;i<MAX3510X_MAX_HITCOUNT;i++)
-    {
-        h2 = max3510x_fixed_to_time( &p_hits[i] );
-        sum += h2;
-        diff += h2 - h1;
-        h1 = h2;
-    }
-    *p_period = diff;
-    *p_toff = sum;
+	uint32_t	reload;
+	uint32_t	current;
 }
+counter_t;
+
+static counter_t s_temperature_counter;
+static counter_t s_calibration_counter;
+
+static void set_counter( counter_t *p_counter, uint32_t count )
+{
+	vTaskSuspendAll();
+    p_counter->reload = count;
+    p_counter->current = s_ratio_counter;
+	xTaskResumeAll();
+}
+
+static bool counter( counter_t *p_counter )
+{
+	vTaskSuspendAll();
+	if( p_counter->reload && (p_counter->current == s_ratio_counter) )
+	{
+		p_counter->current += p_counter->reload;
+		xTaskResumeAll();
+		return true;
+	}
+	xTaskResumeAll();
+	return false;
+}
+
+static void interactive_mode( void )
+{
+	com_report_t report;
+	tdc_cmd_context_t cmd_context;
+	while( !s_sampling )
+	{
+		xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
+        if( s_sampling )
+            break;
+		switch( cmd_context = tdc_cmd_context() )
+		{
+			case tdc_cmd_context_tof_diff:
+            case tdc_cmd_context_tof_up:
+            case tdc_cmd_context_tof_down:
+				tdc_get_tof_result( &report.interactive.tof );
+				report.interactive.cmd_context = cmd_context;
+				com_report( report_type_native, (const com_report_t*)&report );
+				break;
+		}
+
+	}
+}
+ 
+void flow_set_ratio_tracking( float_t target )
+{
+	s_up.amplitude_target = target;
+	s_down.amplitude_target = target;
+}
+
+float_t flow_get_ratio_tracking(void)
+{
+	return s_up.amplitude_target;
+}
+
+
+void flow_set_up_offset( uint8_t up )
+{
+	s_offset_up_pending = up;
+}
+
+void flow_set_down_offset( uint8_t down )
+{
+	s_offset_down_pending = down;
+}
+
+
 
 static void task_flow( void * pv )
 {
+	bool do_temperature;
+	static flow_sample_t 	tracked;
     static tdc_result_t result;
-    static flow_accmulation_t acc;
+
     static QueueSetMemberHandle_t qs;
 
-    tdc_configure( config_load() );
-    board_set_sampling_frequency(1);
-    board_enable_sample_timer();
+    const config_t *p_config = config_load();
+    
+    tdc_configure( &p_config->chip );
 
+    flow_set_temp_sampling_ratio(p_config->temperature_ratio);
+    flow_set_cal_sampling_ratio(p_config->calibration_ratio);
+    flow_set_sampling_frequency(p_config->sampling_frequency);
+
+	tdc_read_thresholds( &s_up.comparator_offset, &s_down.comparator_offset );
+	
     while( 1 )
     {
-        xSemaphoreTake( s_sample_clock_semaphore, portMAX_DELAY );
+		if( s_sampling )
+		{
+            xSemaphoreTake( s_sample_clock_semaphore, portMAX_DELAY );
+		}
+		if( !s_sampling )
+		{
+			interactive_mode();
+			tdc_read_thresholds( &s_up.comparator_offset, &s_down.comparator_offset );
+			continue;
+		}
+		if( s_offset_up_pending )
+		{
+			s_up.comparator_offset = s_offset_up_pending;
+			s_offset_up_pending = 0;
+		}
+		if( s_offset_down_pending )
+		{
+			s_down.comparator_offset = s_offset_down_pending;
+			s_offset_down_pending = 0;
+		}
+        tdc_adjust_and_measure(s_up.comparator_offset, s_down.comparator_offset);
 
-        tdc_cmd_tof_diff();
+		flow_lock();
+        board_led( 1, true );
         xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
-        if( !s_temp_prescaler )
+        board_led( 1, false );
+		if( do_temperature = counter( &s_temperature_counter ))
+		{
             tdc_cmd_temperature();
-        tdc_get_tof_result( &result.tof_result );
+		}
+        tdc_get_tof_result( &result.tof );
         if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO | MAX3510X_REG_INTERRUPT_STATUS_TOF)) == MAX3510X_REG_INTERRUPT_STATUS_TOF )
         {
-            q31_t tof_up, period_up, tof_down, period_down;
-            q31_t tof_up_inv, tof_down_inv;
-            tof_and_period( &tof_up, &period_up, result.tof_result.tof.up.hit );
-            tof_and_period( &tof_down, &period_down, result.tof_result.tof.down.hit );
-            
-            tof_up <<= 6;
-            tof_down <<= 6;
-             
-            arm_recip_q31( tof_up, &tof_up_inv, armRecipTableQ31 );
-            arm_recip_q31( tof_down, &tof_down_inv, armRecipTableQ31 );
-            
-            q31_t flow2 = tof_down_inv - tof_up_inv;  // this quantity is proportional to linear and volumetric flow
-            
-            transducer_compensated_tof( &acc.last.product, &acc.last.up, &acc.last.down, result.tof_result.tof.up.hit, result.tof_result.tof.down.hit );
- 
-            
-            acc.up += acc.last.up;
-            acc.down += acc.last.down;
-            acc.product += acc.last.product;
+			//transducer_compensated_tof( &acc.last.product, &acc.last.up, &acc.last.down, result.tof.tof.up.hit, result.tof.tof.down.hit );
 
-//			flow = transducer_flow_compensate( flow );
-
-            //q31_t volume = transducer_volume( flow, )
-            com_report(report_type_raw, (const com_report_t*)&result );
-            com_report(report_type_fixed, (const com_report_t*)&acc );
+			if( wave_track( &s_up, result.tof.tof.up.hit, result.tof.tof.up.t1_t2 ) )
+			{
+				board_led(0,false);
+			}
+			else
+			{
+				board_led(0,true);
+			}
+			if( wave_track( &s_down, result.tof.tof.down.hit, result.tof.tof.down.t1_t2 ) )
+			{
+				board_led(1,false);
+			}
+			else
+			{
+				board_led(1,true);
+			}
+			tracked.up = s_up.tof;
+			tracked.down = s_down.tof;
+			com_report(report_type_tracked,(const com_report_t*)&tracked);
+			com_report(report_type_detail, (const com_report_t*)&result );
         }
-        if( !s_temp_prescaler )
+        if( do_temperature )
         {
             xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
-            tdc_get_temperature_result( &result.temperature_result );
+            tdc_get_temperature_result( &result.temperature );
 
             if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO | MAX3510X_REG_INTERRUPT_STATUS_TE)) == MAX3510X_REG_INTERRUPT_STATUS_TE )
             {
-                uint32_t t1 = max3510x_fixed_to_time( &result.temperature_result.temperature[0] );
-                uint32_t t2 = max3510x_fixed_to_time( &result.temperature_result.temperature[1] );
+                uint32_t t1 = max3510x_fixed_to_time( &result.temperature.temperature[0] );
+                uint32_t t2 = max3510x_fixed_to_time( &result.temperature.temperature[1] );
 
             }
-            com_report( report_type_raw, (const com_report_t*)&result );
+            com_report( report_type_detail, (const com_report_t*)&result );
         }
-        if( ++s_temp_prescaler >= s_temp_ratio )
-            s_temp_prescaler = 0;
+		if( counter( &s_calibration_counter ) )
+		{
+            tdc_cmd_calibrate();
+            xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
+			tdc_get_calibration_result( &result.calibration );
+            while(!(result.status & MAX3510X_REG_INTERRUPT_STATUS_CAL ));
+			com_report(report_type_detail, (const com_report_t*)&result );
+		}
+		s_ratio_counter++;
+   		flow_unlock();
     }
 }
 
+void flow_lock( void )
+{
+    xSemaphoreTakeRecursive( s_flow_semaphore, portMAX_DELAY );
+}
+
+void flow_unlock( void )
+{
+    xSemaphoreGiveRecursive( s_flow_semaphore );
+}
 
 void flow_init( void )
 {
@@ -125,16 +235,43 @@ void flow_init( void )
     configASSERT( s_sample_clock_semaphore );
     s_sample_ready_semaphore = xSemaphoreCreateBinary();
     configASSERT( s_sample_ready_semaphore );
-
+    s_flow_semaphore = xSemaphoreCreateRecursiveMutex();
+    configASSERT( s_flow_semaphore );
     xTaskCreate( task_flow, "flow", TASK_DEFAULT_STACK_SIZE, NULL, TASK_DEFAULT_PRIORITY, NULL );
 }
 
-uint16_t flow_get_temp_sampling_ratio(void)
+uint32_t flow_get_temp_sampling_ratio(void)
 {
-    return s_temp_ratio;
+    return s_temperature_counter.reload;
 }
 
-void flow_set_temp_sampling_ratio( uint16_t ratio )
+void flow_set_temp_sampling_ratio( uint32_t count )
 {
-    s_temp_ratio = ratio;
+	set_counter( &s_temperature_counter, count );
 }
+
+uint32_t flow_get_cal_sampling_ratio(void)
+{
+    return s_calibration_counter.reload;
+}
+
+void flow_set_cal_sampling_ratio( uint32_t count )
+{
+	set_counter( &s_calibration_counter, count );
+}
+
+void flow_set_sampling_frequency( uint8_t freq_hz )
+{
+    board_set_sampling_frequency(freq_hz);
+    s_sampling = freq_hz > 0 ? true : false;
+    if( s_sampling )
+		xSemaphoreGive( s_sample_ready_semaphore );
+	else
+        xSemaphoreGive( s_sample_clock_semaphore );
+}
+
+uint8_t flow_get_sampling_frequency( void )
+{
+    return  board_get_sampling_frequency();
+}
+

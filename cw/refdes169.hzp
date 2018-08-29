@@ -50,7 +50,7 @@
       arm_target_interface_type="SWD"
       arm_target_loader_applicable_loaders="Flash"
       arm_target_loader_default_loader="Flash"
-      c_preprocessor_definitions="TARGET=MAX32625 ;TARGET_REV=0x4132;MAX35104"
+      c_preprocessor_definitions="TARGET=MAX32625 ;TARGET_REV=0x4132;MAX35104;STARTUP_FROM_RESET"
       c_user_include_directories="$(DeviceIncludePath);../freertos"
       debug_register_definition_file="$(DeviceRegisterDefinitionFile)"
       gcc_entry_point="Reset_Handler"
@@ -165,5 +165,6 @@
     <file file_name="../ui.c" />
     <file file_name="../config.c" />
     <file file_name="../transducer.c" />
+    <file file_name="../wave_track.c" />
   </project>
 </solution>

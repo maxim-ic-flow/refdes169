@@ -4,6 +4,7 @@
 #include "tdc.h"
 #include "config.h"
 #include "flow.h"
+#include "wave_track.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -25,7 +26,20 @@
 
 #define REPORT_MESSAGE_COUNT	4
 
-static report_type_t s_report_type;
+#define REPORT_TYPE_NATIVE			1
+#define REPORT_TYPE_METER			2
+
+typedef enum _com_last_cmd_t
+{
+    com_last_cmd_tof_diff,
+    com_last_cmd_tof_up,
+    com_last_cmd_tof_down,
+    com_last_cmd_temperature,
+    com_last_cmd_cal
+}
+com_last_cmd_t;
+static com_last_cmd_t s_last_cmd;
+
 
 static QueueSetHandle_t 		s_queue_set;
 static StreamBufferHandle_t     s_tx_circbuf;
@@ -38,6 +52,10 @@ static SemaphoreHandle_t        s_report_semaphore;
 static char 		s_rx_buf[RX_MAX_MSG_SIZE];
 static uint8_t 		s_rx_ndx;
 static bool			s_output;
+
+
+static uint8_t s_report_format;
+
 
 
 typedef struct _enum_t
@@ -113,7 +131,7 @@ static bool get_enum_value( const char * p_arg, const enum_t * p_enum, uint8_t c
     uint8_t i;
     for( i = 0; i < count; i++ )
     {
-        if( !strcmp( p_arg, p_enum[i].p_tag ) )
+        if( !strncmp( p_arg, p_enum[i].p_tag, strlen(p_enum[i].p_tag ) ) )
         {
             *p_result = p_enum[i].value;
             return true;
@@ -804,6 +822,7 @@ static void c_offsetupr_get( void )
 static bool c_offsetup_set( const char * p_arg )
 {
     int8_t r = atoi( p_arg );
+	flow_set_up_offset( r );
     tdc_set_c_offsetup( r );
     return true;
 }
@@ -834,6 +853,7 @@ static void c_offsetdnr_get( void )
 static bool c_offsetdn_set( const char * p_arg )
 {
     int8_t r = atoi( p_arg );
+	flow_set_down_offset( r );
     tdc_set_c_offsetdn( r );
     return true;
 }
@@ -1350,34 +1370,32 @@ static bool escape( char c )
 }
 
 
-
-
-
 static bool tof_up_cmd( const char * p_arg )
 {
     tdc_cmd_tof_up();
-    //s_last_tdc_cmd = tdc_cmd_tof_up;
+    s_last_cmd = com_last_cmd_tof_diff;
     return true;
 }
 
 static bool tof_down_cmd( const char * p_arg )
 {
     tdc_cmd_tof_down();
-    //s_last_tdc_cmd = tdc_cmd_tof_down;
+    s_last_cmd = com_last_cmd_tof_diff;
     return true;
 }
+
 
 static bool tof_diff_cmd( const char * p_arg )
 {
     tdc_cmd_tof_diff();
-    //s_last_tdc_cmd = tdc_cmd_tof_diff;
+    s_last_cmd = com_last_cmd_tof_diff;
     return true;
 }
 
 static bool temp_cmd( const char * p_arg )
 {
-    max3510x_temperature( NULL );
-    //s_last_tdc_cmd = tdc_cmd_temp;
+    tdc_cmd_temperature();
+    s_last_cmd = com_last_cmd_temperature;
     return true;
 }
 
@@ -1395,7 +1413,7 @@ static bool reset_cmd( const char * p_arg )
 
 static bool init_cmd( const char * p_arg )
 {
-    max3510x_initialize( NULL );
+    tdc_cmd_initialize();
     return true;
 }
 
@@ -1407,14 +1425,14 @@ static bool bpcal_cmd( const char * p_arg )
 
 static bool halt_cmd( const char * p_arg )
 {
-    max3510x_halt( NULL );
+    tdc_cmd_halt();
     return true;
 }
 
 static bool cal_cmd( const char * p_arg )
 {
 //	s_last_tdc_cmd = tdc_cmd_cal;
-    max3510x_calibrate( NULL );
+    tdc_cmd_calibrate();
     return true;
 }
 
@@ -1424,6 +1442,19 @@ static bool default_cmd( const char * p_arg )
     board_reset();
 //	flow_init();
     return true;
+}
+
+static void rtrack_get( void )
+{
+	float_t ratio_target = flow_get_ratio_tracking();
+	com_printf("%f\r\n", ratio_target );
+}
+
+static bool rtrack_set( const char * p_arg )
+{
+	float_t ratio_target = strtof( p_arg, NULL );
+	flow_set_ratio_tracking( ratio_target );
+	return true;
 }
 
 static bool spi_test_cmd( const char * p_arg )
@@ -1449,34 +1480,46 @@ static bool spi_test_cmd( const char * p_arg )
 
 static const enum_t s_report_type_enum[] =
 {
-    { "raw", (uint16_t)report_type_raw },
-    { "fixed", (uint16_t)report_type_fixed },
+	{ "tof", COM_REPORT_FORMAT_DETAIL_TOF },
+	{ "cal", COM_REPORT_FORMAT_DETAIL_CALIBRATION },
+    { "temp", COM_REPORT_FORMAT_DETAIL_TEMPERATURE },
+    { "tracked", COM_REPORT_FORMAT_TRACKED }
 };
 
-static bool report( const char * p_arg )
+static bool report_cmd( const char * p_arg )
 {
-    uint16_t result;
-    if( get_enum_value( p_arg, s_report_type_enum, ARRAY_COUNT( s_report_type_enum ), &result ) )
-    {
-        s_report_type = (report_type_t)result;
-        return true;
-    }
-    return false;
+    uint16_t r;
+	s_report_format = 0;
+
+	while( *p_arg )
+	{
+		if( !get_enum_value( p_arg, s_report_type_enum, ARRAY_COUNT( s_report_type_enum ), &r ) )
+			return false;
+
+		s_report_format |= r;
+
+		while( *p_arg && !isspace(*p_arg) )
+			p_arg++;
+		p_arg = skip_space(p_arg);
+	}
+	return true;
 }
 
 
-static bool save_config( const char * p_arg )
+static bool save_cmd( const char * p_arg )
 {
     uint16_t ndx = atoi( p_arg );
-    max3510x_registers_t * p_config = config_get_max3510x_regs( ndx );
-    if( p_config )
-    {
-        com_printf( "saving configuration to location %d.\r\n", ndx );
-        tdc_cmd_read_config( p_config );
-
-        config_save();
+	config_t *p_config = config_get(ndx);
+	if( p_config )
+	{
+		max3510x_read_config( NULL, &p_config->chip );
+		p_config->calibration_ratio = flow_get_cal_sampling_ratio();
+		p_config->sampling_frequency = board_get_sampling_frequency();
+		p_config->temperature_ratio = flow_get_temp_sampling_ratio();
+		com_printf( "saved configuration to location %d.\r\n", ndx );
+		config_save();
         return true;
-    }
+	}
     return false;
 }
 
@@ -1505,6 +1548,18 @@ static void tofsr_get( void )
     com_printf( "%d Hz\r\n", board_get_sampling_frequency() );
 }
 
+static bool calr_set( const char * p_arg )
+{
+    uint16_t ratio = atoi( p_arg );
+	flow_set_cal_sampling_ratio( ratio );
+    return true;
+}
+
+static void calr_get( void )
+{
+    com_printf( "%d\r\n", flow_get_cal_sampling_ratio() );
+}
+
 static bool tofsr_set( const char * p_arg )
 {
     uint8_t freq = atoi( p_arg );
@@ -1513,7 +1568,7 @@ static bool tofsr_set( const char * p_arg )
         com_printf( "sampling frequency must be 0Hz to 128Hz\r\n" );
         return false;
     }
-    board_set_sampling_frequency( freq );
+    flow_set_sampling_frequency( freq );
     return true;
 }
 
@@ -1578,7 +1633,7 @@ static const cmd_t s_cmd[] =
     { "tof_up", "TOF_UP command", tof_up_cmd, NULL },
     { "tof_down", "TOF_DOWN command", tof_down_cmd, NULL },
     { "tof_diff", "TOF_DIFF command", tof_diff_cmd, NULL },
-    { "temp", "temperature command", temp_cmd, NULL },
+    { "tmp", "temperature command", temp_cmd, NULL },
     { "init", "initialize command", init_cmd, NULL },
     { "bpcal", "bandpass calibration command", bpcal_cmd, NULL },
     { "halt", "halt command", halt_cmd, NULL },
@@ -1588,16 +1643,17 @@ static const cmd_t s_cmd[] =
 
     { "zero", "set zero flow offset", zero_cmd, NULL },
     { "dc", "dumps all configuration registers", dc_cmd, NULL },
-
+	{ "rtrack", "track t1/t2 ratio by adjusting comparator offset thresholds", rtrack_set, rtrack_get },
     // host commands
     { "reset", "reset command", reset_cmd, NULL },
-    { "save", "save configuration to flash", save_config, NULL },
+    { "save", "save configuration to flash", save_cmd, NULL },
     { "spi_test", "perform's a write/read verification test on the max3510x", spi_test_cmd, NULL },
-    { "tempr", "number of tof measurements for each temperature measurement", tempr_set, tempr_get },
+    { "tempr", "number of TOF measurements per temperature measurement", tempr_set, tempr_get },
+	{ "calr", "number of TOF measurements per calibration command", calr_set, calr_get },
     { "default", "restore configuration defaults", default_cmd, NULL },
     //{ "mode", "select sampling mode: event, host, max, idle", mode_set, mode_get },
     { "tofsr", "host mode sampling frequency (1-128 Hz)", tofsr_set, tofsr_get },
-    { "report", "turn on sample reports until a key is pressed:  raw, fixed, or none", report, NULL },
+    { "report", "turn on sample reports until a key is pressed:  tof, temp, cal, tracked", report_cmd, NULL },
     { "help", "you're looking at it", help_cmd, NULL }
 };
 
@@ -1607,16 +1663,16 @@ static void command( uint8_t c )
     s_output = false;
     if( escape( c ) )
     {
-        if( s_report_type )
+        if( s_report_format )
         {
-            s_report_type = report_type_none;
+            s_report_format = 0;
             com_printf( "\33[2K\r" );
         }
         return;
     }
-    if( s_report_type )
+    if( s_report_format )
     {
-        s_report_type = report_type_none;
+        s_report_format = 0;
         com_printf( "\33[2K\r> " );
         if( c == '\r' )
             return;
@@ -1696,7 +1752,7 @@ static void command( uint8_t c )
                     else
                     {
                         record_command();
-                        if( !s_report_type )
+                        if( !s_report_format )
                             com_printf( "> " );
                     }
                     b = true;
@@ -1741,9 +1797,50 @@ static void rx_cb( uart_req_t * p_req, int err )
     UART_ReadAsync( BOARD_UART, p_req );
 }
 
+static float_t dump_tof( const max3510x_measurement_t *p_dir, uint8_t hitwvs[6], uint16_t hitcount )
+{
+    const float_t _1us = 1E-6;
+    float_t us_sum = 0;
+    float_t hit[6];
+	float_t period;
+	float_t period_sum = 0;
+	com_printf("t2/ideal = %f\r\n", max3510x_ratio_to_float(p_dir->t2_ideal) );
+	com_printf("t1/t2 = %f\r\n", max3510x_ratio_to_float(p_dir->t1_t2) );
+	com_printf("thresh/peak = %f\r\n", (float_t)wave_track_linearize_ratio(p_dir->t1_t2) / 32768 );
+	
+	uint8_t i;
+	for(i=0;i<hitcount;i++)
+	{
+        hit[i] = max3510x_fixed_to_float( &p_dir->hit[i]);
+		if( i )
+		{
+			period = (hit[i] - hit[i-1]) / (float_t)(hitwvs[i]-hitwvs[i-1]) ;
+			period_sum += period;
+			com_printf( "hit%d = %.3fus, %.3fkHz\r\n", i + 1, hit[i] / _1us, 1.0f / period / 1000.0f );
+		}
+		else
+		{
+			com_printf( "hit%d = %.3fus\r\n", i + 1, hit[i] / _1us );
+		}
+        us_sum += hit[i];
+	}
+	float_t hz = (hitcount-1) * 1.0f / period_sum;
+	com_printf("mean = %.3fus, %.3fkHz\r\n", us_sum / (_1us * hitcount), hz / 1000.0f );
+	return hz;
+}
+
+static void dump_tof_diff( const tdc_tof_result_t *p_results, uint8_t hitwvs[6], uint16_t hitcount )
+{
+    const float_t _1ns = 1E-9;
+	float_t up_hz = dump_tof( &p_results->tof.up, hitwvs, hitcount );
+	com_printf("\r\n");
+	float_t down_hz = dump_tof( &p_results->tof.down, hitwvs, hitcount );
+	com_printf("diff = %.3fns, %.0fHz\r\n", max3510x_fixed_to_float(&p_results->tof.tof_diff)/_1ns, (up_hz - down_hz) );
+}
+
 static void task_com( void * pv )
 {
-
+    static report_type_t report_type;
     static uint8_t rx[RX_MAX_MSG_SIZE];
     static com_report_t report;
     static uart_req_t req =
@@ -1762,48 +1859,74 @@ static void task_com( void * pv )
         if( qs == s_report_semaphore  )
         {
             xSemaphoreTake( s_report_semaphore, 0 );
-            xStreamBufferReceive( s_report_buffer , &s_report_type, sizeof(report_type_t), 0 );
-            if( s_report_type == report_type_raw )
+            xStreamBufferReceive( s_report_buffer , &report_type, sizeof(report_type_t), 0 );
+            if( (report_type == report_type_detail)  )
             {
-                static const tdc_result_t * p = &report.raw;
-                xStreamBufferReceive( s_report_buffer, &report, sizeof(report.raw), 0 );
-                if( p->status & MAX3510X_REG_INTERRUPT_STATUS_TOF )
-                {
-                    static const tof_result_t * p_sample = &report.raw.tof_result.tof;
-                    com_printf( "r" );
-                    for( uint8_t i = 0; i < MAX3510X_MAX_HITCOUNT; i++ )
-                    {
-                        com_printf( "%4.4X%4.4X", p_sample->up.hit[i].integer, p_sample->up.hit[i].fraction );
-                    }
-                    com_printf( "%2.2X", p_sample->up.t1_t2 );
-                    for( uint8_t i = 0; i < MAX3510X_MAX_HITCOUNT; i++ )
-                    {
-                        com_printf( "%4.4X%4.4X", p_sample->down.hit[i].integer, p_sample->down.hit[i].fraction );
-                    }
-                    com_printf( "%2.2X", p_sample->down.t1_t2 );
-                    com_printf( "\r\n" );
-                }
-                if( p->status & MAX3510X_REG_INTERRUPT_STATUS_TE )
-                {
-
-                    com_printf( "t" );
-                    for( uint8_t i = 0; i < 2; i++ ) com_printf( "%4.4X%4.4X", p->temperature_result.temperature[i].integer, p->temperature_result.temperature[i].fraction );
-                    com_printf( "\r\n" );
-                }
-            }
-            else if( s_report_type == report_type_fixed )
+                static const tdc_result_t * p = &report.hits;
+                xStreamBufferReceive( s_report_buffer, &report, sizeof(report.hits), 0 );
+				if( (p->status & MAX3510X_REG_INTERRUPT_STATUS_TOF) && (s_report_format & COM_REPORT_FORMAT_DETAIL_TOF))
+				{
+					static const tof_result_t * p_sample = &report.hits.tof.tof;
+					com_printf( "r" );
+					for( uint8_t i = 0; i < MAX3510X_MAX_HITCOUNT; i++ )
+					{
+						com_printf( "%4.4X%4.4X", p_sample->up.hit[i].integer, p_sample->up.hit[i].fraction );
+					}
+					for( uint8_t i = 0; i < MAX3510X_MAX_HITCOUNT; i++ )
+					{
+						com_printf( "%4.4X%4.4X", p_sample->down.hit[i].integer, p_sample->down.hit[i].fraction );
+					}
+					com_printf( "%2.2X", p_sample->up.t1_t2 );
+					com_printf( "%2.2X", p_sample->down.t1_t2 );
+					com_printf( "\r\n" );
+				}
+				if( (p->status & MAX3510X_REG_INTERRUPT_STATUS_TE)  && (s_report_format & COM_REPORT_FORMAT_DETAIL_TEMPERATURE) )
+				{
+					com_printf( "t" );
+					for( uint8_t i = 0; i < 2; i++ ) 
+						com_printf( "%4.4X%4.4X", p->temperature.temperature[i].integer, p->temperature.temperature[i].fraction );
+					com_printf( "\r\n" );
+				}
+				if( (p->status & MAX3510X_REG_INTERRUPT_STATUS_CAL)  && (s_report_format & COM_REPORT_FORMAT_DETAIL_CALIBRATION) )
+				{
+					com_printf( "c%4.4X%4.4X\r\n", p->calibration.calibration.integer, p->calibration.calibration.fraction );
+				}
+			}
+            /*
+            if( (report_type == report_type_meter) )
             {
-                xStreamBufferReceive( s_report_buffer, &report, sizeof(report.fixed), 0 );
-                com_printf("f%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X\r\n", 
-                    (uint32_t)(report.fixed.up>>32), (uint32_t)report.fixed.up,
-                    (uint32_t)(report.fixed.down>>32), (uint32_t)report.fixed.down, 
-                    (uint32_t)(report.fixed.product>>32), (uint32_t)report.fixed.product, 
-                    report.fixed.last.up, report.fixed.last.down, report.fixed.last.product );
+                xStreamBufferReceive( s_report_buffer, &report, sizeof(report.meter), 0 );
+				if( s_report_format & COM_REPORT_FORMAT_METER )
+				{
+					com_printf("f%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X%8.8X\r\n",
+						(uint32_t)(report.meter.up>>32), (uint32_t)report.meter.up,
+						(uint32_t)(report.meter.down>>32), (uint32_t)report.meter.down, 
+						(uint32_t)(report.meter.product>>32), (uint32_t)report.meter.product, 
+						report.meter.last.up, report.meter.last.down, report.meter.last.product );
+				}
             }
-        }
+            */
+			if( report_type == report_type_native )
+			{
+                xStreamBufferReceive( s_report_buffer, &report, sizeof(report.interactive), 0 );
+				if( report.interactive.cmd_context == tdc_cmd_context_tof_diff )
+				{
+					max3510x_float_tof_results_t f_results;
+					uint8_t hw[MAX3510X_MAX_HITCOUNT];
+					max3510x_get_hitwaves( NULL, &hw[0] );
+					uint16_t hitcount = MAX3510X_REG_TOF2_STOP( MAX3510X_READ_BITFIELD( NULL, TOF2, STOP ) );
+					dump_tof_diff( &report.interactive.tof, hw, hitcount );
+                    com_printf("\r\n");
+				}
+			}
+			if( report_type == report_type_tracked  && (s_report_format & COM_REPORT_FORMAT_TRACKED) )
+			{
+                xStreamBufferReceive( s_report_buffer, &report, sizeof(report.tracked), 0 );
+                com_printf("x%8.8X%8.8X\r\n", report.tracked.up, report.tracked.down );
+			}
+		}
         else if( qs == s_rx_semaphore )
         {
-
             board_uart_disable_interrupt();
             uint8_t rx_count = req.data - uart_rx_buf;
             memcpy( rx, uart_rx_buf, rx_count );
@@ -1847,20 +1970,32 @@ void com_init( void )
 void com_report( report_type_t type, const com_report_t *p_report )
 {
     size_t s;
-    uint16_t size;
+    uint16_t size = 0;
     switch( type )
     {
-        case report_type_raw:
-            size = sizeof(tdc_result_t);
+		case report_type_detail:
+			if( s_report_format & (COM_REPORT_FORMAT_DETAIL_TOF|COM_REPORT_FORMAT_DETAIL_TEMPERATURE|COM_REPORT_FORMAT_DETAIL_CALIBRATION) )
+				size = sizeof(tdc_result_t);
             break;
-        case report_type_fixed:
-            size = sizeof(flow_accmulation_t);
+        //case report_type_meter:
+//			if( (s_report_format & COM_REPORT_FORMAT_METER) )
+//				size = sizeof(flow_accmulation_t);
+//            break;
+		case report_type_native:
+		{
+			size = sizeof(interactive_report_t);
+			break;
+		}
+        case report_type_tracked:
+        {
+			if( s_report_format & COM_REPORT_FORMAT_TRACKED )
+			size = sizeof(flow_sample_t);
             break;
+        }
         default:
-            type = report_type_none;
             break;
     }
-    if( s_report_type != report_type_none && s_report_type == type )
+    if( size )
     {
         if(  xStreamBufferSpacesAvailable( s_report_buffer ) >= sizeof(type)+size )
         {

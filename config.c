@@ -31,6 +31,9 @@
  *
  ******************************************************************************/
 
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
 #include "global.h"
 #include "config.h"
 #include "board.h"
@@ -48,26 +51,20 @@ header_t;
 
 #define CONFIG_COUNT	4
 
-typedef struct _data_t
-{
-	max3510x_registers_t		chip_config;
-}
-data_t;
-
-typedef struct _config_t
+typedef struct _flash_config_t
 {
 	header_t	header;
 	union
 	{
-		data_t		data[CONFIG_COUNT];
-		uint32_t    pad[CONFIG_COUNT*(sizeof(data_t)+3)/4];
+		config_t	data[CONFIG_COUNT];
+		uint32_t    pad[CONFIG_COUNT*(sizeof(config_t)+3)/4];
 	};
 }
-config_t;
+flash_config_t;
 
 #pragma pack()
 
-static config_t s_config;
+static flash_config_t s_config;
 
 void config_save( void )
 {
@@ -84,13 +81,13 @@ void config_default( void )
 	const max3510x_registers_t *p_default;
 	while( i < CONFIG_COUNT && (p_default = transducer_config(i)) )
 	{
-		memcpy( &s_config.data[i].chip_config, p_default, sizeof(s_config.data[i].chip_config) );
+		memcpy( &s_config.data[i].chip, p_default, sizeof(s_config.data[i].chip) );
 		i++;
 	}
 	p_default = transducer_config(0);
 	while( i < CONFIG_COUNT )
 	{
-		memcpy( &s_config.data[i].chip_config, p_default, sizeof(s_config.data[i].chip_config) );
+		memcpy( &s_config.data[i].chip, p_default, sizeof(s_config.data[i].chip) );
         i++;
 	}
 	config_save();
@@ -101,12 +98,19 @@ bool config_set_boot_config( uint8_t ndx )
 	if( ndx >= CONFIG_COUNT )
 		return false;
     if( ndx )
-        memcpy( config_get_max3510x_regs(0), config_get_max3510x_regs(ndx), sizeof(s_config.data[ndx].chip_config) );
+        memcpy( config_get(0), config_get(ndx), sizeof(s_config.data) );
 	config_save();
     return true;
 }
 
-max3510x_registers_t * config_load(void)
+config_t * config_get( uint8_t ndx )
+{
+	if( ndx >= CONFIG_COUNT )
+		return NULL;
+	return &s_config.data[ndx];
+}
+
+const config_t * config_load(void)
 {
 	memset( &s_config, 0, sizeof(s_config) );
 	board_flash_read( &s_config, sizeof(s_config) );
@@ -115,18 +119,13 @@ max3510x_registers_t * config_load(void)
 		uint16_t crc = board_crc( &s_config.pad, sizeof(s_config.pad) );
 		if( crc == s_config.header.crc )
 		{
-			return &s_config.data[0].chip_config;
+			return config_get(0);
 		}
 	}
 	// invalid image in flash -- setup defaults.
 	config_default();
-	return &s_config.data[0].chip_config;
+	return config_get(0);
 }
 
-max3510x_registers_t* config_get_max3510x_regs( uint8_t ndx )
-{
-	if( ndx >= CONFIG_COUNT )
-		return NULL;
-	return &s_config.data[ndx].chip_config;
-}
 
+#endif

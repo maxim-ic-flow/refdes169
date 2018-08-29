@@ -9,18 +9,37 @@ void com_init(void);
 typedef enum _report_type_t
 {
     report_type_none,
-    report_type_raw,
-    report_type_fixed
+    report_type_meter,
+	report_type_detail,
+	report_type_tracked,
+	report_type_native
 }
 report_type_t;
 
+#define COM_REPORT_FORMAT_DETAIL_TOF			1
+#define COM_REPORT_FORMAT_DETAIL_TEMPERATURE	2
+#define COM_REPORT_FORMAT_DETAIL_CALIBRATION	4
+
+#define COM_REPORT_FORMAT_METER			8
+#define COM_REPORT_FORMAT_NATIVE		16
+
+#define COM_REPORT_FORMAT_TRACKED		32
+
+
+typedef struct _interactive_report_t
+{
+	tdc_tof_result_t	tof;
+	tdc_cmd_context_t	cmd_context;
+}
+interactive_report_t;
 
 typedef struct _com_report_t
 {
     union
     {
-        tdc_result_t        raw;
-        flow_accmulation_t fixed;
+        tdc_result_t        	hits;
+        flow_sample_t 			tracked;
+		interactive_report_t 	interactive;
     };
 }
 com_report_t;

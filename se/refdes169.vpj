@@ -159,6 +159,8 @@
             <F N="../transducer.h"/>
             <F N="../ui.c"/>
             <F N="../ui.h"/>
+            <F N="../wave_track.c"/>
+            <F N="../wave_track.h"/>
         </Folder>
         <Folder Name="../board">
             <Folder Name="refdes169">

@@ -36,9 +36,20 @@
 
 #include "max3510x.h"
 
+#pragma pack(1)
+typedef struct _config_t
+{
+	max3510x_registers_t		chip;
+	uint8_t						sampling_frequency;
+	uint32_t					temperature_ratio;
+	uint32_t					calibration_ratio;
+}
+config_t;
+#pragma pack()
+
 void config_save( void );
-max3510x_registers_t * config_load( void );
-max3510x_registers_t * config_get_max3510x_regs( uint8_t ndx );
+config_t * config_get( uint8_t ndx );
+const config_t * config_load(void);
 void config_default(void);
 bool config_set_boot_config( uint8_t ndx );
 
