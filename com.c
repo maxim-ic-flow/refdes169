@@ -1446,14 +1446,14 @@ static bool default_cmd( const char * p_arg )
 
 static void rtrack_get( void )
 {
-	float_t ratio_target = flow_get_ratio_tracking();
-	com_printf("%f\r\n", ratio_target );
+	uint16_t ratio_target = flow_get_ratio_tracking();
+	com_printf("%f\r\n", (float_t)ratio_target / ((float_t)(1<<16)) );
 }
 
 static bool rtrack_set( const char * p_arg )
 {
 	float_t ratio_target = strtof( p_arg, NULL );
-	flow_set_ratio_tracking( ratio_target );
+	flow_set_ratio_tracking( ratio_target * ((float_t)(1<<16)) );
 	return true;
 }
 
@@ -1806,7 +1806,7 @@ static float_t dump_tof( const max3510x_measurement_t *p_dir, uint8_t hitwvs[6],
 	float_t period_sum = 0;
 	com_printf("t2/ideal = %f\r\n", max3510x_ratio_to_float(p_dir->t2_ideal) );
 	com_printf("t1/t2 = %f\r\n", max3510x_ratio_to_float(p_dir->t1_t2) );
-	com_printf("thresh/peak = %f\r\n", (float_t)wave_track_linearize_ratio(p_dir->t1_t2) / 32768 );
+	com_printf("thresh/peak = %f\r\n", (float_t)wave_track_linearize_ratio(p_dir->t1_t2) / (float_t)(2^16) );
 	
 	uint8_t i;
 	for(i=0;i<hitcount;i++)
@@ -1922,7 +1922,7 @@ static void task_com( void * pv )
 			if( report_type == report_type_tracked  && (s_report_format & COM_REPORT_FORMAT_TRACKED) )
 			{
                 xStreamBufferReceive( s_report_buffer, &report, sizeof(report.tracked), 0 );
-                com_printf("x%8.8X%8.8X\r\n", report.tracked.up, report.tracked.down );
+                com_printf("x%8.8X%8.8X%8.8X%8.8X\r\n", report.tracked.up, report.tracked.down, report.tracked.up_period, report.tracked.down_period );
 			}
 		}
         else if( qs == s_rx_semaphore )
@@ -1983,13 +1983,13 @@ void com_report( report_type_t type, const com_report_t *p_report )
 //            break;
 		case report_type_native:
 		{
-			size = sizeof(interactive_report_t);
+			size = sizeof(com_interactive_report_t);
 			break;
 		}
         case report_type_tracked:
         {
 			if( s_report_format & COM_REPORT_FORMAT_TRACKED )
-			size = sizeof(flow_sample_t);
+			size = sizeof(com_tracked_sample_t);
             break;
         }
         default:

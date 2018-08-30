@@ -93,13 +93,13 @@ static void interactive_mode( void )
 	}
 }
  
-void flow_set_ratio_tracking( float_t target )
+void flow_set_ratio_tracking( uint16_t target )
 {
 	s_up.amplitude_target = target;
 	s_down.amplitude_target = target;
 }
 
-float_t flow_get_ratio_tracking(void)
+uint16_t flow_get_ratio_tracking(void)
 {
 	return s_up.amplitude_target;
 }
@@ -120,7 +120,7 @@ void flow_set_down_offset( uint8_t down )
 static void task_flow( void * pv )
 {
 	bool do_temperature;
-	static flow_sample_t 	tracked;
+	static com_tracked_sample_t 	tracked;
     static tdc_result_t result;
 
     static QueueSetMemberHandle_t qs;
@@ -190,6 +190,8 @@ static void task_flow( void * pv )
 			}
 			tracked.up = s_up.tof;
 			tracked.down = s_down.tof;
+			tracked.up_period = s_up.period;
+			tracked.down_period = s_down.period;
 			com_report(report_type_tracked,(const com_report_t*)&tracked);
 			com_report(report_type_detail, (const com_report_t*)&result );
         }

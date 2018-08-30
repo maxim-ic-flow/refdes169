@@ -26,20 +26,30 @@ report_type_t;
 #define COM_REPORT_FORMAT_TRACKED		32
 
 
-typedef struct _interactive_report_t
+typedef struct _com_interactive_report_t
 {
 	tdc_tof_result_t	tof;
 	tdc_cmd_context_t	cmd_context;
 }
-interactive_report_t;
+com_interactive_report_t;
+
+typedef struct _com_tracked_sample_t
+{
+    max3510x_time_t up;
+    max3510x_time_t down;
+	max3510x_time_t up_period;
+	max3510x_time_t down_period;
+}
+com_tracked_sample_t;
 
 typedef struct _com_report_t
 {
     union
     {
-        tdc_result_t        	hits;
-        flow_sample_t 			tracked;
-		interactive_report_t 	interactive;
+        tdc_result_t        		hits;
+        com_tracked_sample_t 		tracked;
+		com_interactive_report_t 	interactive;
+		
     };
 }
 com_report_t;

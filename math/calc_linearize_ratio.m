@@ -12,9 +12,17 @@ r = r * lsb;
 [a h] = min(abs(r-.8));
 
 r = r(l:h);
-s =cos(r*pi/2);    % inverse relation of t1/t2 ratio to threshold
+s =1./cos(r*pi/2);    % inverse relation of t1/t2 ratio to threshold
 
+fprintf('float_t:\r');
 for i = 1:length(s)
     fprintf('%d, ',s(i));
 end
+
+fprintf('\rq16:\r');
+
+for i = 1:length(s)
+    fprintf('%d, ', round(s(i) * 2^14) );
+end
+
 fprintf('\r');

@@ -5,12 +5,6 @@
 
 void flow_init(void);
 
-typedef struct _flow_sample_t
-{
-    max3510x_time_t up;
-    max3510x_time_t down;
-}
-flow_sample_t;
 
 void flow_sample_clock( void );
 void flow_sample_complete(void);
@@ -29,7 +23,7 @@ void flow_lock( void );
 void flow_set_down_offset( uint8_t up );
 void flow_set_up_offset( uint8_t up );
 
-void flow_set_ratio_tracking( float_t target );
-float_t flow_get_ratio_tracking(void);
+void flow_set_ratio_tracking( uint16_t target );
+uint16_t flow_get_ratio_tracking(void);
 
 #endif
