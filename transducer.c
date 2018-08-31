@@ -98,10 +98,10 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_REG_SET( EVENT_TIMING_1_TDM, MAX3510X_REG_EVENT_TIMING_1_TDM_C( 1 ) ),		// event mode tof diff collects a single tof diff measurement per sequence
 		
             MAX3510X_REG_SET( EVENT_TIMING_2_TMM, MAX3510X_REG_EVENT_TIMING_2_TMM_C( 1 ) )|     // event mode temperature collects a single temperature measurement per sequence
-            MAX3510X_BF( EVENT_TIMING_2_CAL_USE, ENABLED )|                                    	// calibration values are applied to measurement results
+            MAX3510X_BF( EVENT_TIMING_2_CAL_USE, ENABLED  )|                                    	// calibration values are applied to measurement results
             MAX3510X_BF( EVENT_TIMING_2_CAL_CFG, DISABLED )|                                   	// calibration is driven by the host cpu.
             MAX3510X_REG_SET( EVENT_TIMING_2_PRECYC, 1 )|
-            MAX3510X_BF( EVENT_TIMING_2_PORTCYC, 128US ),										// minimize cycle time
+            MAX3510X_BF( EVENT_TIMING_2_PORTCYC, 256US ),
 
             MAX3510X_REG_SET( TOF_MEASUREMENT_DELAY_DLY, MAX3510X_REG_TOF_MEASUREMENT_DELAY_DLY_US( 200 ) ),   // receiption squelch time
 		

@@ -1884,12 +1884,12 @@ static void task_com( void * pv )
 				{
 					com_printf( "t" );
 					for( uint8_t i = 0; i < 2; i++ ) 
-						com_printf( "%4.4X%4.4X", p->temperature.temperature[i].integer, p->temperature.temperature[i].fraction );
+						com_printf( "%4.4X%4.4X", (uint16_t)p->temperature.temperature[i].integer, (uint16_t)p->temperature.temperature[i].fraction );
 					com_printf( "\r\n" );
 				}
 				if( (p->status & MAX3510X_REG_INTERRUPT_STATUS_CAL)  && (s_report_format & COM_REPORT_FORMAT_DETAIL_CALIBRATION) )
 				{
-					com_printf( "c%4.4X%4.4X\r\n", p->calibration.calibration.integer, p->calibration.calibration.fraction );
+					com_printf( "c%4.4X%4.4X\r\n", (uint16_t)p->calibration.calibration.integer, (uint16_t)p->calibration.calibration.fraction );
 				}
 			}
             /*

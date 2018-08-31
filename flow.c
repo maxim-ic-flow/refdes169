@@ -14,7 +14,7 @@ static SemaphoreHandle_t        s_flow_semaphore;
 static bool                     s_sampling;
 static uint8_t 					s_offset_up_pending;
 static uint8_t 					s_offset_down_pending;
-static wave_track_t 			s_up, s_down;
+static wave_track_direction_t 			s_up, s_down;
 
 
 void flow_sample_complete( void )
@@ -171,8 +171,9 @@ static void task_flow( void * pv )
         if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO | MAX3510X_REG_INTERRUPT_STATUS_TOF)) == MAX3510X_REG_INTERRUPT_STATUS_TOF )
         {
 			//transducer_compensated_tof( &acc.last.product, &acc.last.up, &acc.last.down, result.tof.tof.up.hit, result.tof.tof.down.hit );
+			bool up_tracked, down_tracked;
 
-			if( wave_track( &s_up, result.tof.tof.up.hit, result.tof.tof.up.t1_t2 ) )
+			if( up_tracked = wave_track_direction( &s_up, result.tof.tof.up.hit, result.tof.tof.up.t1_t2 ) )
 			{
 				board_led(0,false);
 			}
@@ -180,20 +181,24 @@ static void task_flow( void * pv )
 			{
 				board_led(0,true);
 			}
-			if( wave_track( &s_down, result.tof.tof.down.hit, result.tof.tof.down.t1_t2 ) )
+			if( down_tracked = wave_track_direction( &s_down, result.tof.tof.down.hit, result.tof.tof.down.t1_t2 ) )
 			{
 				board_led(1,false);
 			}
 			else
-			{
+			{ 
 				board_led(1,true);
 			}
-			tracked.up = s_up.tof;
-			tracked.down = s_down.tof;
-			tracked.up_period = s_up.period;
-			tracked.down_period = s_down.period;
-			com_report(report_type_tracked,(const com_report_t*)&tracked);
-			com_report(report_type_detail, (const com_report_t*)&result );
+			if( up_tracked && down_tracked && wave_track_converge( &s_up, &s_down ) )
+			{
+				// TOF data is validated
+				tracked.up = s_up.tof;
+				tracked.down = s_down.tof;
+				tracked.up_period = s_up.period;
+				tracked.down_period = s_down.period;
+				com_report(report_type_tracked,(const com_report_t*)&tracked);
+				com_report(report_type_detail, (const com_report_t*)&result );
+			}
         }
         if( do_temperature )
         {
@@ -204,9 +209,12 @@ static void task_flow( void * pv )
             {
                 uint32_t t1 = max3510x_fixed_to_time( &result.temperature.temperature[0] );
                 uint32_t t2 = max3510x_fixed_to_time( &result.temperature.temperature[1] );
-
+				if( t1 != 0xFFFFFFFF && t2 != 0xFFFFFFFF )
+				{
+					// valid temperature sample
+				}
+				com_report( report_type_detail, (const com_report_t *)&result );
             }
-            com_report( report_type_detail, (const com_report_t*)&result );
         }
 		if( counter( &s_calibration_counter ) )
 		{
