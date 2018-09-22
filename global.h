@@ -1,10 +1,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
+#include <float.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+
 
 
 #define ARRAY_COUNT(x)  (sizeof(x)/sizeof(*x))

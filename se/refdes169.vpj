@@ -151,12 +151,14 @@
             <F N="../config.h"/>
             <F N="../flow.c"/>
             <F N="../flow.h"/>
+            <F N="../flowbody.c"/>
+            <F N="../flowbody.h"/>
             <F N="../freertos_hooks.c"/>
             <F N="../FreeRTOSConfig.h"/>
             <F N="../global.h"/>
             <F N="../main.c"/>
-            <F N="../transducer.c"/>
-            <F N="../transducer.h"/>
+            <F N="../mpli.c"/>
+            <F N="../mpli.h"/>
             <F N="../ui.c"/>
             <F N="../ui.h"/>
             <F N="../wave_track.c"/>

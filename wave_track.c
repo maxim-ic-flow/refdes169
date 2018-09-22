@@ -118,7 +118,7 @@ bool wave_track_direction( wave_track_direction_t * p_dir, const max3510x_fixed_
 	//
 
 	p_dir->period = wave_track_process_sample( p_dir->hits, p_hits );
-	max3510x_time_t tof = p_dir->hits[ WAVE_TRACK_SAMPLE_WAVE ];
+	max3510x_time_t tof = p_dir->hits[ WAVE_TRACK_SAMPLE_WAVE + p_dir->phase ] ;
 	if( !p_dir->tof )
 	{
 		p_dir->tof = tof;
@@ -142,32 +142,37 @@ bool wave_track_direction( wave_track_direction_t * p_dir, const max3510x_fixed_
 		if( ndx < WAVE_TRACK_HIT_COUNTS )
 		{
 			tof = p_dir->hits[ ndx ];
-			p_dir->tof = tof;
 		}
 		else
 			tof = 0;	// Indicates loss of phase tracking.  No valid TOF measurements available.  
 						// Application-specific logic should be added to handle this case.
 	}
-	if( p_dir->amplitude_target )  // if amplitude_target is zero, then amplitude tracking is disabled.
-		p_dir->comparator_offset = wave_track_amplitude( p_dir->comparator_offset, t1_t2_ratio,  p_dir->amplitude_target );
+	if( p_dir->ratio_tracking )  // if ratio_tracking is zero, then amplitude tracking is disabled.
+	{
+		uint8_t offset = wave_track_amplitude( p_dir->comparator_offset, t1_t2_ratio,  p_dir->ratio_tracking );
+		if(  offset < p_dir->mimimum_offset )
+			offset = p_dir->mimimum_offset;
+		p_dir->comparator_offset = offset;
+	}
+    p_dir->tof = tof;
 	return tof ? true : false;
 }
 
 bool wave_track_converge( wave_track_direction_t * p_up, wave_track_direction_t * p_down )
 {
 	bool success = true;
-	const uint8_t weight[WAVE_TRACK_HIT_COUNTS-2] = { 0, 1, 1, 0 };
+	const uint8_t weight[WAVE_TRACK_HIT_COUNTS] = { 0, 1, 3, 2, 1, 0 };
 
 	uint8_t i, j, min_i, min_j;
 
 	max3510x_time_t period = (p_up->period + p_down->period )/2;
-	if( wave_track_phase( p_up->tof, p_down->tof, period ) )
+ 	if( wave_track_phase( p_up->tof, p_down->tof, period ) )
 	{
 		int8_t min_delta = WAVE_TRACK_HIT_COUNTS;
 
-		for(i=1;i<WAVE_TRACK_HIT_COUNTS-1;i++)
+		for(i=0;i<WAVE_TRACK_HIT_COUNTS;i++)
 		{
-			for(j=1;j<WAVE_TRACK_HIT_COUNTS-1;j++)
+			for(j=0;j<WAVE_TRACK_HIT_COUNTS;j++)
 			{
 				int8_t delta = wave_track_phase( p_up->hits[i], p_down->hits[j], period );
 				delta = delta < 0 ? -delta : delta;
@@ -196,7 +201,7 @@ bool wave_track_converge( wave_track_direction_t * p_up, wave_track_direction_t 
 		if( success = (wave_track_phase( p_up->hits[min_i], p_down->hits[min_j], period )==0) )
 		{
 			p_up->tof = p_up->hits[min_i];
-			p_down->tof =  p_down->hits[min_i];
+			p_down->tof =  p_down->hits[min_j];
 		}
 	}
 	return success;

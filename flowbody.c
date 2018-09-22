@@ -33,13 +33,12 @@
 
 #include "global.h"
 #include "board.h"
-#include "transducer.h"
+#include "flowbody.h"
+#include "mpli.h"
 
-// physical characteristics of the transducers and flowbody
-// These default settings may not be appropriate for your transducer configuration
+// This file contains chip configuration and functions specifc to a particular flowbody design.
 
-#define DEFAULT_T1_THRESHOLD	127
-
+#define DEFAULT_T1_THRESHOLD	84
 
 static const max3510x_registers_t s_config[1] =
 {
@@ -64,7 +63,7 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_BF( AFE1_AFEOUT, BANDPASS ),       // the ouput of the afe is applied to the CIP/N pins (TP5 and TP6)
                                                         // AFE 2
             MAX3510X_BF( AFE2_4M_BP, DISABLED )|       	// 4MHz clock is from a crystal
-            MAX3510X_BF( AFE2_PGA, 21_97DB )|          	// pga gain
+            MAX3510X_BF( AFE2_PGA, 16_65DB )|          	// pga gain
             MAX3510X_BF( AFE2_LOWQ, 7_4KHZ )|           // pass band
             MAX3510X_BF( AFE2_BP_BYPASS, DISABLED )     // bandpass bypass is disabled (the bandpass filter is being used)
         },
@@ -79,14 +78,14 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_BF( TOF2_TOF_CYC, 0US )|              // minimize delay between up and down measurements
             MAX3510X_BF( TOF2_TIMOUT, 512US ),             // timeout
 		
-            MAX3510X_REG_SET( TOF3_HIT1WV, 13 )|            // hit waves occur immediately after the T2 wave
-            MAX3510X_REG_SET( TOF3_HIT2WV, 23 ),
+            MAX3510X_REG_SET( TOF3_HIT1WV, 3 )|            // hit waves occur immediately after the T2 wave
+            MAX3510X_REG_SET( TOF3_HIT2WV, 4 ),
 		
-            MAX3510X_REG_SET( TOF4_HIT3WV, 33 )|
-            MAX3510X_REG_SET( TOF4_HIT4WV, 43 ),
+            MAX3510X_REG_SET( TOF4_HIT3WV, 5 )|
+            MAX3510X_REG_SET( TOF4_HIT4WV, 6 ),
 		
-            MAX3510X_REG_SET( TOF5_HIT5WV, 53 )|
-            MAX3510X_REG_SET( TOF5_HIT6WV, 63 ),
+            MAX3510X_REG_SET( TOF5_HIT5WV, 7 )|
+            MAX3510X_REG_SET( TOF5_HIT6WV, 8 ),
 		
             MAX3510X_REG_SET( TOF6_C_OFFSETUPR, 0 )|                   	// hit values correspond to zero crossings of the hit waves
             MAX3510X_REG_SET( TOF6_C_OFFSETUP, DEFAULT_T1_THRESHOLD ),  // T1 threshold
@@ -103,7 +102,7 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_REG_SET( EVENT_TIMING_2_PRECYC, 1 )|
             MAX3510X_BF( EVENT_TIMING_2_PORTCYC, 256US ),
 
-            MAX3510X_REG_SET( TOF_MEASUREMENT_DELAY_DLY, MAX3510X_REG_TOF_MEASUREMENT_DELAY_DLY_US( 200 ) ),   // receiption squelch time
+            MAX3510X_REG_SET( TOF_MEASUREMENT_DELAY_DLY, MAX3510X_REG_TOF_MEASUREMENT_DELAY_DLY_US( 220 ) ),   // receiption squelch time
 		
             MAX3510X_BF( CALIBRATION_CONTROL_CMP_EN, ENABLED )|     // the output of the comparator is applied to the CMP_OUT pin (TP1)
             MAX3510X_BF( CALIBRATION_CONTROL_CMP_SEL, CMP_EN )|     // enable the CMP_OUT pin
@@ -123,62 +122,133 @@ static const max3510x_registers_t s_config[1] =
     }
 };
 
-const max3510x_registers_t* transducer_config( uint8_t ndx )
+static const config_algo_t s_algo =
 {
-	// returns the transducer configuration array
+    // transducer-specific defaults for the tracking algorithm and other firmware-specific values
+	.calibration_ratio = 0,
+	.offset_minimum = 50,
+	.ratio_tracking =  0xB505, // Q16 format.  approximately == 0.707
+	.sampling_frequency = 10,
+	.temperature_ratio = 20,
+};
+
+bool flowbody_config( config_t *p_config, uint8_t ndx )
+{
 	if( ndx >= ARRAY_COUNT(s_config) )
-		return NULL;
-	return &s_config[ndx];
+		return false;
+	memcpy( &p_config->chip, &s_config[ndx], sizeof(p_config->chip));
+	memcpy( &p_config->algo, &s_algo, sizeof(p_config->algo) );
+	return true;
 }
 
-#define FP_OFFSET 0x1E848B26
+#define TOF_MIN	0x40A1EF2
+#define TOF_MAX 0x51C0A56
 
-#define FP_BIAS   5
+// TOF_MIN and TOF_MAX describe the range of time-of-flight values expected from the TDC across the operating range
+// of the flowbody.  This allows for offsetting to minimize precision loss incured by converting to
+// TDC time integers to single-point floats.
 
-#define TEMP_COMP_C1    1
-#define TEMP_COMP_C2    0
+// For this flowbody, TOF values require 27 bits (-10C to +40C, dry air).  Offsetting reduce this to 25 bits.  
+// 2 bits of precision are lost during conversion to sp-float instead of 4 bits. 
 
+// TOF_MIN can be set to zero when working with an unknown flowbody.
 
-uint32_t transducer_offset_and_scale( const max3510x_fixed_t *p_fixed )
+void flowbody_transducer_compensate( const flowbody_sample_t *p_sample, uint32_t * p_up, uint32_t * p_down )
 {
-    return (max3510x_fixed_to_time( p_fixed ) - FP_OFFSET) << FP_BIAS;
+    // This firmware does not provide transducer-specific temperature compensation. 
+
+	// As a result, flow data from this firmware is dependant on temperature.  At a single temperature,
+	// it is common to see a non-zero flow, which is referred to as "zero-flow offset".  It can be positive or negative
+	// and dependant on the specific transducer pair installed into the flowbody, their temperature, temperature differential
+	// within a transducer, and between the transducers.
+
+	// If you intend to productize this firmware, this routine represents a code stub in which
+	// you can impliment your transducer temperature compensation algorithm.  'p_sample' contains measurements
+	// of directional transducer oscillation period which strongly corrolates with transducer temperature-dependant delays.
+	// However, other inputs, like an actual temperature measurement, can also be used to drive the compensation algorithm.
+	// See Maxim Application Note 6631 for more information.
+
+	static const mpli_point_t table[] =
+	{
+        { TOF_MIN, 0 }, { TOF_MAX, 0 }
+	};
+	static const mpli_t mpli =
+	{
+		.table = table,
+		.count = ARRAY_COUNT(table),
+	};
+
+	// provided as an example if you want to use mpli.  
+	int32_t offset_adjust = (int32_t)mpli_calc( &mpli, (mpli_dt)(p_sample->up_period + p_sample->down_period ) );
+    *p_up = p_sample->up - offset_adjust;
+    *p_down = p_sample->down + offset_adjust;
 }
 
-
-static uint32_t aggregate_period( const uint32_t * p_up, const uint32_t * p_down )
+void flowbody_flow_sos( max3510x_time_t up, max3510x_time_t down, flow_dt *p_flow, flow_dt *p_sos )
 {
-    uint8_t i;
-    uint32_t aggregate_period = 0;
-    for( i = 1; i < MAX3510X_MAX_HITCOUNT; i++ )
+    // Convert time-of-flight data to flow and speed-of-sound using the sum over product and difference over product methods
+    static const mpli_point_t table[] =
     {
-         aggregate_period += p_up[i] + p_down[i] - p_up[i-1] - p_down[i-1];
-    }
-    return aggregate_period;
-}
-
-
-uint32_t transducer_tof_from_hits( const max3510x_fixed_t hits[MAX3510X_MAX_HITCOUNT] )
-{
-    uint8_t i;
-    uint32_t sum = 0;
-    for(i=0;i<MAX3510X_MAX_HITCOUNT;i++)
+        { -1E-6, -1E-6 }, { 1E-6, 1E-6 }
+    };
+    static const mpli_t mpli =
     {
-       sum += max3510x_fixed_to_time( &hits[i] );
-    }
-    return (sum - FP_OFFSET ) << FP_BIAS;
+        .table = table,
+        .count = ARRAY_COUNT(table),
+    };
+    
+	const uint32_t offset = TOF_MIN;
+
+	uint32_t upo = up - offset;
+	uint32_t downo = down - offset;
+
+	float_t dtf = (float_t)(up - down);
+	float_t upf = (float_t)(up - offset);
+	float_t downf = (float_t)(down - offset);
+	float_t pf = upf * downf;
+
+
+	float_t flow = dtf / pf;                // This quantity is proportional to gas flow through the flowbody
+                                            // and is independant of the speed-of-sound.  Typical magnitude is ~1E-10
+
+    // The intent here is to linearlize the flow response of the flowbody as well as correct for model errors.
+    // The interpolation table is specific to the physical aspects of the flowbody.
+    // Use the 'fcal' command (see com.c) to create datapoints for this table.
+    mpli_dt linearized_flow = mpli_calc( &mpli, flow );
+
+	*p_flow = (flow_dt)linearized_flow;
+								            
+	if( p_sos )
+	{
+        float_t sf = (float_t)(up + down - offset<<1 );
+        float_t sos =  sf / pf;
+        *p_sos = (flow_dt)sos;      // This quantity is proportional to the speed-of-sound within the flowbody
+                                    // and is independant of flow velocity.
+	}
 }
 
-void transducer_compensated_tof( q31_t *p_prod, q31_t *p_up, q31_t *p_down, const max3510x_fixed_t up[MAX3510X_MAX_HITCOUNT], const max3510x_fixed_t down[MAX3510X_MAX_HITCOUNT] )
+flow_dt flowbody_volumetric( flow_dt integrated_flow, uint32_t sample_count )
 {
-    q31_t upp;
-    q31_t downn;
+	static const flow_dt velocity_to_volumetric = 1.0f;  // Q2.30
 
-    upp = transducer_tof_from_hits( up );
-    downn = transducer_tof_from_hits( down );
-    uint32_t ap = aggregate_period( p_up, p_down );
-    *p_up = upp * TEMP_COMP_C1 + TEMP_COMP_C2;
-    *p_down = downn * TEMP_COMP_C1 + TEMP_COMP_C2;
-    *p_prod = ((q63_t)upp * downn) >> 30;
+	// given linearized flow, this function returns a volumetric value with the assumption
+	// that volumetric flow is scaled version of linear flow.  
 
+	flow_dt v = integrated_flow / sample_count;
+	return v;
+}
+
+
+float_t flowbody_hmi_flow( flow_dt flow )
+{
+    return 0;
+}
+float_t flowbody_hmi_sos( flow_dt sos )
+{
+    return 0;
+}
+float_t flowbody_hmi_volumetric( int64_t volumetric )
+{
+    return 0;
 }
 

@@ -37,14 +37,23 @@
 #include "max3510x.h"
 
 #pragma pack(1)
-typedef struct _config_t
+typedef struct _config_algo_t
 {
-	max3510x_registers_t		chip;
 	uint8_t						sampling_frequency;
 	uint32_t					temperature_ratio;
 	uint32_t					calibration_ratio;
+	uint16_t					ratio_tracking;
+	uint8_t						offset_minimum;
+}
+config_algo_t;
+
+typedef struct _config_t
+{
+	max3510x_registers_t		chip;
+	config_algo_t				algo;
 }
 config_t;
+
 #pragma pack()
 
 void config_save( void );

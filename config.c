@@ -38,7 +38,7 @@
 #include "config.h"
 #include "board.h"
 #include "flow.h"
-#include "transducer.h"
+#include "flowbody.h"
 
 #pragma pack(1)
 
@@ -79,15 +79,11 @@ void config_default( void )
 	uint8_t i= 0;
     memset( &s_config, 0, sizeof(s_config) );
 	const max3510x_registers_t *p_default;
-	while( i < CONFIG_COUNT && (p_default = transducer_config(i)) )
-	{
-		memcpy( &s_config.data[i].chip, p_default, sizeof(s_config.data[i].chip) );
+	while( i < CONFIG_COUNT && flowbody_config( &s_config.data[i], i ) )
 		i++;
-	}
-	p_default = transducer_config(0);
 	while( i < CONFIG_COUNT )
 	{
-		memcpy( &s_config.data[i].chip, p_default, sizeof(s_config.data[i].chip) );
+		flowbody_config( &s_config.data[i], 0 ) ;
         i++;
 	}
 	config_save();

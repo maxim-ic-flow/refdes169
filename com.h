@@ -3,6 +3,7 @@
 
 #include "tdc.h"
 #include "flow.h"
+#include "flowbody.h"
 
 void com_init(void);
 
@@ -22,8 +23,8 @@ report_type_t;
 
 #define COM_REPORT_FORMAT_METER			8
 #define COM_REPORT_FORMAT_NATIVE		16
-
 #define COM_REPORT_FORMAT_TRACKED		32
+
 
 
 typedef struct _com_interactive_report_t
@@ -33,23 +34,23 @@ typedef struct _com_interactive_report_t
 }
 com_interactive_report_t;
 
-typedef struct _com_tracked_sample_t
+
+typedef struct _com_meter_t
 {
-    max3510x_time_t up;
-    max3510x_time_t down;
-	max3510x_time_t up_period;
-	max3510x_time_t down_period;
+	flow_dt     flow;
+	flow_dt		sos;
+	flow_dt     volumetric;
 }
-com_tracked_sample_t;
+com_meter_t;
 
 typedef struct _com_report_t
 {
     union
     {
         tdc_result_t        		hits;
-        com_tracked_sample_t 		tracked;
+        flowbody_sample_t 			sample;
 		com_interactive_report_t 	interactive;
-		
+		com_meter_t					meter;
     };
 }
 com_report_t;

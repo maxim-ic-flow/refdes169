@@ -11,9 +11,10 @@ typedef struct _wave_track_direction_t
 	max3510x_time_t period;			// on return is the average waveform period.
 	max3510x_time_t tof;			//  on call is the last TOF sample.  on return is the new TOF sample
 	max3510x_time_t hits[WAVE_TRACK_HIT_COUNTS];  // on return is all hit wave TOF's in 32-bit integer format
-	uint16_t amplitude_target;		// Q16 fraction of T1 wave peak that identifies the ideal comparator threshold.
+	uint16_t ratio_tracking;		// Q16 fraction of T1 wave peak that identifies the ideal comparator threshold.
 									// 0.707 (0xB4FE) is a good place to start.  Set to zero to disable amplitude tracking.
 	uint8_t	comparator_offset;		// on call is the current comparator offset.  on return is the recommended comparator offset
+	uint8_t	 mimimum_offset;		// used to limit the comparator threshold to always be above noise.
 	int8_t	phase;					// used to determine which of hits[] is considered TOF
 }
 wave_track_direction_t;

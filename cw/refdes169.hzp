@@ -57,7 +57,7 @@
       gcc_optimization_level="None"
       linker_additional_files="../board/$(BOARD)/csl/CMSIS/Lib/GCC/libarm_cortexM4lf_math.a"
       linker_memory_map_file="$(DeviceMemoryMapFile)"
-      linker_printf_fmt_level="int"
+      linker_printf_fmt_level="long long"
       linker_printf_fp_enabled="Float"
       linker_scanf_character_group_matching_enabled="No"
       linker_section_placement_file="MAX32625_flash_placement.xml"
@@ -164,7 +164,8 @@
     <file file_name="../flow.c" />
     <file file_name="../ui.c" />
     <file file_name="../config.c" />
-    <file file_name="../transducer.c" />
     <file file_name="../wave_track.c" />
+    <file file_name="../mpli.c" />
+    <file file_name="../flowbody.c" />
   </project>
 </solution>

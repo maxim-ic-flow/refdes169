@@ -31,14 +31,34 @@
  *
  ******************************************************************************/
 
-#ifndef _TRANSDUCER_H_
+#ifndef _flowbody_H_
+#define _flowbody_H_
 
 #include "max3510x.h"
-#include "arm_math.h"
+#include "config.h"
 
-const max3510x_registers_t * transducer_config( uint8_t ndx );
-uint32_t transducer_offset_and_scale( const max3510x_fixed_t *p_fixed );
-void transducer_compensated_tof( q31_t *p_prod, q31_t *p_up, q31_t *p_down, const max3510x_fixed_t up[MAX3510X_MAX_HITCOUNT], const max3510x_fixed_t down[MAX3510X_MAX_HITCOUNT] );
+
+typedef struct _flowbody_sample_t
+{
+    max3510x_time_t up;
+    max3510x_time_t down;
+	max3510x_time_t up_period;
+	max3510x_time_t down_period;
+}
+flowbody_sample_t;
+
+typedef float_t flow_dt;
+
+void flowbody_flow_sos( max3510x_time_t up, max3510x_time_t down, flow_dt *p_flow, flow_dt *p_sos );
+
+bool flowbody_config( config_t *p_config, uint8_t ndx );
+void flowbody_transducer_compensate( const flowbody_sample_t *p_sample, uint32_t * p_up, uint32_t * p_down );
+
+flow_dt flowbody_volumetric( flow_dt integrated_flow, uint32_t sample_count );
+void flowbody_linearize( flow_dt *p_flow, flow_dt flow, flow_dt *p_sos, flow_dt sos );
+float_t flowbody_hmi_flow( flow_dt flow );
+float_t flowbody_hmi_sos( flow_dt sos );
+float_t flowbody_hmi_volumetric( int64_t volumetric );
 
 #endif
 
