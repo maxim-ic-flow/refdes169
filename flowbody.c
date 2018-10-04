@@ -69,8 +69,8 @@ static const max3510x_registers_t s_config[1] =
         },
         {
             MAX3510X_OPCODE_WRITE_REG( MAX3510X_REG_TOF1 ),
-            MAX3510X_REG_SET( TOF1_PL, 66 )|            // number of pulses applied to the transducers
-            MAX3510X_BF( TOF1_DPL, 400KHZ )|            // pulse launch frequency
+            MAX3510X_REG_SET( TOF1_PL, 8 )|            	// number of pulses applied to the transducers
+            MAX3510X_BF( TOF1_DPL, 200KHZ )|            // pulse launch frequency
             MAX3510X_BF( TOF1_STOP_POL, NEG_EDGE ),		// polarity of the T1 threshold
 
             MAX3510X_REG_SET( TOF2_STOP, MAX3510X_REG_TOF2_STOP_C( MAX3510X_MAX_HITCOUNT ) )|
@@ -130,6 +130,7 @@ static const config_algo_t s_algo =
 	.ratio_tracking =  0xB505, // Q16 format.  approximately == 0.707
 	.sampling_frequency = 10,
 	.temperature_ratio = 20,
+	.squelch = 0
 };
 
 bool flowbody_config( config_t *p_config, uint8_t ndx )

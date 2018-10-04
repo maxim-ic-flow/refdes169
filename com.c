@@ -435,7 +435,7 @@ static bool afe_bp_set( const char *p_arg )
 	if( !binary( p_arg, &r ) )
 		return false;
 
-	tdc_set_afe_bp( r ? MAX3510X_REG_AFE1_AFE_BP_ENABLED : MAX3510X_REG_AFE1_AFE_BP_DISABLED );
+	tdc_set_afe_bp( r ? MAX3510X_REG_AFE1_AFE_BP_DISABLED : MAX3510X_REG_AFE1_AFE_BP_ENABLED );
 	return true;
 }
 
@@ -1603,6 +1603,18 @@ static void calr_get( void )
 	com_printf( "%d\r\n", flow_get_cal_sampling_ratio() );
 }
 
+static bool squelch_set( const char *p_arg )
+{
+	uint16_t time_us = atoi( p_arg );
+	board_set_squelch_time( time_us );
+	return true;
+}
+
+static void squelch_get( void )
+{
+	com_printf( "%dus\r\n", board_get_squelch_time() );
+}
+
 static bool tofsr_set( const char *p_arg )
 {
 	uint8_t freq = atoi( p_arg );
@@ -1620,6 +1632,10 @@ static bool dc_cmd( const char *p_arg );
 
 static const cmd_t s_cmd[] =
 {
+	// command dispatch table
+
+	// TDC register access
+
 	{ "sfreq", "switcher frequency in kHz:  100, 125, 166, or 200", sfreq_set, sfreq_get },
 	{ "hreg_d", "high voltage regulator disable:  1=disable regulator, 0=enable regulator", hreg_d_set, hreg_d_get },
 	{ "dreq", "doubler freqency in kHz: 100, 125, 166, or 200", dreq_set, dreq_get },
@@ -1670,7 +1686,8 @@ static const cmd_t s_cmd[] =
 	{ "am", "alarm control:  none, minutes, hours, or both", am_set, am_get },
 	{ "wf", "watchdog flag:  0=reset", wf_set, wf_get },
 	{ "wd_en", "watchdog enable:  1=enabled, 0=disabled", wd_en_set, wd_en_get },
-	// chip commands
+
+	// TDC commands
 
 //	{ "event", "start event timing mode: tof, temp, or both", start_event_cmd, NULL },
 	{ "tof_up", "TOF_UP command", tof_up_cmd, NULL },
@@ -1682,21 +1699,24 @@ static const cmd_t s_cmd[] =
 	{ "halt", "halt command", halt_cmd, NULL },
 	{ "cal", "calibrate command", cal_cmd, NULL },
 
-// meta commands
+	// Algorithm settings
 
 	{ "flow", "measure raw flow rate", flow_cal_cmd, NULL },
 	{ "zfo", "measure zero flow offset", zero_offset_cmd, NULL },
 	{ "dc", "dumps all configuration registers", dc_cmd, NULL },
 	{ "rtrack", "track t1/t2 ratio by adjusting comparator offset thresholds", rtrack_set, rtrack_get },
 	{ "offmin", "sets the minimum offset used by the wave tracking algorithm", offmin_set, offmin_get },
-	// host commands
+	{ "tofsr", "host mode sampling frequency (1-128 Hz)", tofsr_set, tofsr_get },
+	{ "tempr", "number of TOF measurements per temperature measurement", tempr_set, tempr_get },
+	{ "calr", "number of TOF measurements per calibration command", calr_set, calr_get },
+	{ "squelch", "signal squelch time (us) zero to disable", squelch_set, squelch_get },
+
+	// platform commands
+
 	{ "reset", "reset command", reset_cmd, NULL },
 	{ "save", "save configuration to flash", save_cmd, NULL },
 	{ "spi_test", "perform's a write/read verification test on the max3510x", spi_test_cmd, NULL },
-	{ "tempr", "number of TOF measurements per temperature measurement", tempr_set, tempr_get },
-	{ "calr", "number of TOF measurements per calibration command", calr_set, calr_get },
 	{ "default", "restore configuration defaults", default_cmd, NULL },
-	{ "tofsr", "host mode sampling frequency (1-128 Hz)", tofsr_set, tofsr_get },
 	{ "report", "turn on sample reports until a key is pressed:  tof, temp, cal, tracked, meter", report_cmd, NULL },
 	{ "help", "you're looking at it", help_cmd, NULL }
 };

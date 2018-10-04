@@ -40,10 +40,11 @@
 typedef struct _config_algo_t
 {
 	uint8_t						sampling_frequency;
+	uint8_t						offset_minimum;
+	uint16_t					ratio_tracking;
 	uint32_t					temperature_ratio;
 	uint32_t					calibration_ratio;
-	uint16_t					ratio_tracking;
-	uint8_t						offset_minimum;
+	uint16_t					squelch;
 }
 config_algo_t;
 

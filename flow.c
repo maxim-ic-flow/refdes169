@@ -27,7 +27,6 @@ static uint8_t 					s_offset_down_pending;
 static wave_track_direction_t 	s_up, s_down;
 static uint32_t					s_sample_count;
 static flow_dt					s_flow_accumulator;
-static max3510x_time_t			s_zero_flow_offset;
 static bool						s_tracking;
 
 void flow_sample_complete( void )
@@ -154,7 +153,8 @@ static void task_flow( void * pv )
     flow_set_cal_sampling_ratio(p_config->algo.calibration_ratio);
     flow_set_sampling_frequency(p_config->algo.sampling_frequency);
 	flow_set_ratio_tracking(p_config->algo.ratio_tracking);
-	flow_set_minimum_offset( p_config->algo.offset_minimum );
+	flow_set_minimum_offset(p_config->algo.offset_minimum);
+	board_set_squelch_time(p_config->algo.squelch);
 
 	tdc_read_thresholds( &s_up.comparator_offset, &s_down.comparator_offset );
 	
@@ -180,7 +180,7 @@ static void task_flow( void * pv )
 			s_down.comparator_offset = s_offset_down_pending;
 			s_offset_down_pending = 0;
 		}
-        tdc_adjust_and_measure(s_up.comparator_offset, s_down.comparator_offset);
+        tdc_measure(s_up.comparator_offset, s_down.comparator_offset);
 
 		flow_lock();
         xSemaphoreTake( s_sample_ready_semaphore, portMAX_DELAY );
@@ -325,7 +325,3 @@ uint8_t flow_get_sampling_frequency( void )
     return  board_get_sampling_frequency();
 }
 
-void flow_set_zero_flow( max3510x_time_t offset )
-{
-	s_zero_flow_offset = offset >> 1;
-}
