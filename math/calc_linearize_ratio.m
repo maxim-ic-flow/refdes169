@@ -8,8 +8,8 @@ r = 0:127;
 
 r = r * lsb;
 
-[a l] = min(abs(r-.4));
-[a h] = min(abs(r-.8));
+[a l] = min(abs(r-.1));
+[a h] = min(abs(r-.9));
 
 r = r(l:h);
 s =1./cos(r*pi/2);    % inverse relation of t1/t2 ratio to threshold

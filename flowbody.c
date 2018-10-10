@@ -36,9 +36,15 @@
 #include "flowbody.h"
 #include "mpli.h"
 
+#define TRANSDUCER_AUDIOWELL_HT0008 0
+#define TRANSDUCER_CERAMTEC_09300 1
+
+#define TRANSDUCER TRANSDUCER_AUDIOWELL_HT0008
+
+
 // This file contains chip configuration and functions specifc to a particular flowbody design.
 
-#define DEFAULT_T1_THRESHOLD	84
+#define DEFAULT_T1_THRESHOLD	90
 
 static const max3510x_registers_t s_config[1] =
 {
@@ -50,7 +56,11 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_BF(SWITCHER1_HREG_D, ENABLED)|		// 
             MAX3510X_BF(SWITCHER1_DREQ, 200KHZ)|     	// switching frequency
             MAX3510X_BF(SWITCHER1_DEFAULT, DEFAULT)|
+#if( TRANSDUCER == TRANSDUCER_AUDIOWELL_HT0008 )
+            MAX3510X_BF(SWITCHER1_VS, 11V4),        	// Target VPR voltage
+#else
             MAX3510X_BF(SWITCHER1_VS, 27V0),        	// Target VPR voltage
+#endif
                                                         // Switcher 2
             MAX3510X_BF( SWITCHER2_LT_N, 0V4 )|        	// running current limit V/R14
             MAX3510X_BF( SWITCHER2_LT_S, 0V4 )|        	// startup current limit V/R14
@@ -58,19 +68,24 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_BF( SWITCHER2_LT_50D, TRIMMED )|  	// limit switcher to 50% duty
             MAX3510X_BF( SWITCHER2_PECHO, DISABLED ),   // not using pulse-echo mode
                                                         // AFE 1
-            MAX3510X_BF( AFE1_AFE_BP, DISABLED )|      	// not bypassing the AFE
+            MAX3510X_BF( AFE1_AFE_BP, ENABLED )|      	// AFE is enabled
             MAX3510X_BF( AFE1_SD_EN, DISABLED )|       	// output is differential
             MAX3510X_BF( AFE1_AFEOUT, BANDPASS ),       // the ouput of the afe is applied to the CIP/N pins (TP5 and TP6)
                                                         // AFE 2
             MAX3510X_BF( AFE2_4M_BP, DISABLED )|       	// 4MHz clock is from a crystal
-            MAX3510X_BF( AFE2_PGA, 16_65DB )|          	// pga gain
-            MAX3510X_BF( AFE2_LOWQ, 7_4KHZ )|           // pass band
+            MAX3510X_BF( AFE2_PGA, 10_00DB )|          	// pga gain
+            MAX3510X_BF( AFE2_LOWQ, 12KHZ )|           // pass band
             MAX3510X_BF( AFE2_BP_BYPASS, DISABLED )     // bandpass bypass is disabled (the bandpass filter is being used)
         },
         {
             MAX3510X_OPCODE_WRITE_REG( MAX3510X_REG_TOF1 ),
-            MAX3510X_REG_SET( TOF1_PL, 66 )|            // number of pulses applied to the transducers
+#if( TRANSDUCER == TRANSDUCER_AUDIOWELL_HT0008 )
+            MAX3510X_REG_SET( TOF1_PL, 16 )|            // number of pulses applied to the transducers
+            MAX3510X_BF( TOF1_DPL, 200KHZ )|            // pulse launch frequency
+#else
+            MAX3510X_REG_SET( TOF1_PL, 8 )|             // number of pulses applied to the transducers
             MAX3510X_BF( TOF1_DPL, 400KHZ )|            // pulse launch frequency
+#endif
             MAX3510X_BF( TOF1_STOP_POL, NEG_EDGE ),		// polarity of the T1 threshold
 
             MAX3510X_REG_SET( TOF2_STOP, MAX3510X_REG_TOF2_STOP_C( MAX3510X_MAX_HITCOUNT ) )|
@@ -78,14 +93,14 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_BF( TOF2_TOF_CYC, 0US )|              // minimize delay between up and down measurements
             MAX3510X_BF( TOF2_TIMOUT, 512US ),             // timeout
 		
-            MAX3510X_REG_SET( TOF3_HIT1WV, 3 )|            // hit waves occur immediately after the T2 wave
-            MAX3510X_REG_SET( TOF3_HIT2WV, 4 ),
+            MAX3510X_REG_SET( TOF3_HIT1WV, 8 )|            // hit waves occur immediately after the T2 wave
+            MAX3510X_REG_SET( TOF3_HIT2WV, 9 ),
 		
-            MAX3510X_REG_SET( TOF4_HIT3WV, 5 )|
-            MAX3510X_REG_SET( TOF4_HIT4WV, 6 ),
+            MAX3510X_REG_SET( TOF4_HIT3WV, 10 )|
+            MAX3510X_REG_SET( TOF4_HIT4WV, 11 ),
 		
-            MAX3510X_REG_SET( TOF5_HIT5WV, 7 )|
-            MAX3510X_REG_SET( TOF5_HIT6WV, 8 ),
+            MAX3510X_REG_SET( TOF5_HIT5WV, 12 )|
+            MAX3510X_REG_SET( TOF5_HIT6WV, 13 ),
 		
             MAX3510X_REG_SET( TOF6_C_OFFSETUPR, 0 )|                   	// hit values correspond to zero crossings of the hit waves
             MAX3510X_REG_SET( TOF6_C_OFFSETUP, DEFAULT_T1_THRESHOLD ),  // T1 threshold

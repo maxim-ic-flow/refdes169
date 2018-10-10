@@ -435,7 +435,7 @@ static bool afe_bp_set( const char *p_arg )
 	if( !binary( p_arg, &r ) )
 		return false;
 
-	tdc_set_afe_bp( r ? MAX3510X_REG_AFE1_AFE_BP_ENABLED : MAX3510X_REG_AFE1_AFE_BP_DISABLED );
+	tdc_set_afe_bp( r ? MAX3510X_REG_AFE1_AFE_BP_DISABLED : MAX3510X_REG_AFE1_AFE_BP_ENABLED );
 	return true;
 }
 
