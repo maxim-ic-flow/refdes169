@@ -119,7 +119,7 @@ static void uart_write_cb( void )
 }
 
 
-static void com_printf( const char *p_format, ... )
+void com_printf( const char *p_format, ... )
 {
 	// this function assumes synchronicity
 	static char buff[TX_MAX_MSG_SIZE];
@@ -1895,7 +1895,7 @@ static void task_com( void *pv )
 	};
 
 	QueueSetMemberHandle_t qs;
-	com_printf( "\033cMAXREFDES169 v0.1\r\n> " );
+	com_printf( "\033cMAXREFDES169 v1.0\r\n> " );
 	UART_ReadAsync( BOARD_UART, &req );
 	while( 1 )
 	{
@@ -1941,11 +1941,19 @@ static void task_com( void *pv )
 				xStreamBufferReceive( s_report_buffer, &report, sizeof(report.interactive), 0 );
 				if( report.interactive.cmd_context == tdc_cmd_context_tof_diff )
 				{
-					max3510x_float_tof_results_t f_results;
-					uint8_t hw[MAX3510X_MAX_HITCOUNT];
-					max3510x_get_hitwaves( NULL, &hw[0] );
-					uint16_t hitcount = MAX3510X_REG_TOF2_STOP( MAX3510X_READ_BITFIELD( NULL, TOF2, STOP ) );
-					dump_tof_diff( &report.interactive.tof, hw, hitcount );
+					if( report.interactive.tof.status & MAX3510X_REG_INTERRUPT_STATUS_TO )
+					{
+						com_printf( "\33[2Ktimeout" );
+					}
+					else
+					{
+						max3510x_float_tof_results_t f_results;
+						uint8_t hw[MAX3510X_MAX_HITCOUNT];
+						com_printf( "\33[2K" );
+						max3510x_get_hitwaves( NULL, &hw[0] );
+						uint16_t hitcount = MAX3510X_REG_TOF2_STOP( MAX3510X_READ_BITFIELD( NULL, TOF2, STOP ) );
+						dump_tof_diff( &report.interactive.tof, hw, hitcount );
+					}
 					com_printf( "\r\n> " );
 				}
 			}

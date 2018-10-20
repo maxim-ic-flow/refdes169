@@ -28,7 +28,9 @@
   <configuration
     Name="Common"
     c_preprocessor_definitions="STARTUP_FROM_RESET;$(BOARD)"
-    c_user_include_directories="$(DeviceIncludePath);../board/$(BOARD);../board/$(BOARD)/max3510x;../board/$(BOARD)/csl/PeriphDriver/Include;../board/$(BOARD)/csl/PeriphDriver/;../board/$(BOARD)/csl/CMSIS/Include;.." />
+    c_user_include_directories="../board/$(BOARD);../board/$(BOARD)/max3510x;../board/$(BOARD)/csl/PeriphDriver/Include;../board/$(BOARD)/csl/PeriphDriver/;../board/$(BOARD)/csl/CMSIS/Include;../board/$(BOARD)/csl/CMSIS/Device/Maxim/MAX32625/Include;.."
+    macros=""
+    target_script_file="MAX32625_Target.js" />
   <project Name="refdes169">
     <configuration
       CMSIS_CORE="No"
@@ -55,13 +57,13 @@
       debug_register_definition_file="$(DeviceRegisterDefinitionFile)"
       gcc_entry_point="Reset_Handler"
       gcc_optimization_level="None"
-      linker_additional_files="../board/$(BOARD)/csl/CMSIS/Lib/GCC/libarm_cortexM4lf_math.a"
+      linker_additional_files=""
       linker_memory_map_file="$(DeviceMemoryMapFile)"
       linker_printf_fmt_level="long long"
       linker_printf_fp_enabled="Float"
       linker_scanf_character_group_matching_enabled="No"
       linker_section_placement_file="MAX32625_flash_placement.xml"
-      macros="DeviceIncludePath=$(TargetsDir)/MAX32625/CMSIS/Libraries/Device/Maxim/MAX32625/Include;DeviceHeaderFile=$(TargetsDir)/MAX32625/CMSIS/Libraries/Device/Maxim/MAX32625/Include/max32625.h;DeviceLoaderFile=$(TargetsDir)/MAX32625/Loader/MAX32625_Loader.elf;DeviceMemoryMapFile=$(TargetsDir)/MAX32625/XML/MAX32625_MemoryMap.xml;DeviceRegisterDefinitionFile=$(TargetsDir)/MAX32625/XML/max32625_Registers.xml;DeviceSystemFile=$(TargetsDir)/MAX32625/CMSIS/Libraries/Device/Maxim/MAX32625/Source/system_max32625.c;DeviceVectorsFile=$(TargetsDir)/MAX32625/Source/max32625_Vectors.s;DeviceFamily=MAX32625;BOARD=refdes169"
+      macros="DeviceSystemFile=..\\board\\$(BOARD)\\csl\\CMSIS\\Device\\Maxim\\MAX32625\\Source\\system_max32625.c;DeviceLoaderFile=$(TargetsDir)/MAX32625/Loader/MAX32625_Loader.elf;DeviceFamily=MAX32625;BOARD=refdes169"
       package_dependencies="MAX32625"
       project_directory=""
       project_type="Executable"
@@ -69,19 +71,11 @@
       target_get_partname_script="GetPartName()"
       target_match_partname_script="MatchPartName(&quot;$(Target)&quot;)"
       target_reset_script="Reset();"
+      target_script_file=""
       target_trace_initialize_script="EnableTrace(&quot;$(TraceInterfaceType)&quot;)" />
     <configuration
       Name="Flash"
       arm_target_flash_loader_file_path="$(DeviceLoaderFile)" />
-    <folder Name="CMSIS Files">
-      <file file_name="$(DeviceHeaderFile)" />
-      <file file_name="$(DeviceSystemFile)">
-        <configuration
-          Name="Common"
-          default_code_section=".init"
-          default_const_section=".init_rodata" />
-      </file>
-    </folder>
     <folder Name="Script Files">
       <file file_name="$(TargetsDir)/MAX32625/Scripts/MAX32625_Target.js">
         <configuration Name="Common" file_type="Reset Script" />
@@ -95,6 +89,7 @@
       </file>
       <file file_name="MAX32625_MemoryMap.xml" />
       <file file_name="MAX32625_flash_placement.xml" />
+      <file file_name="../board/refdes169/csl/CMSIS/Device/Maxim/MAX32625/Source/system_max32625.c" />
     </folder>
     <configuration Name="Debug" c_preprocessor_definitions="BOARD_DEBUG" />
     <configuration Name="Release" c_preprocessor_definitions="" />
@@ -123,6 +118,7 @@
       </folder>
       <file file_name="../board/refdes169/tdc.c" />
       <file file_name="../board/refdes169/tdc.h" />
+      <file file_name="../board/refdes169/lcd.c" />
     </folder>
     <file file_name="../main.c" />
     <file file_name="../global.h" />

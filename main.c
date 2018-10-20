@@ -10,11 +10,9 @@ void main( void )
 {
     board_init();
 
-	ui_init();
+    ui_init();
     com_init();
-	tdc_init();
-	flow_init();
-
-	board_final();
+    tdc_init();
+    flow_init();
     vTaskStartScheduler();
 }

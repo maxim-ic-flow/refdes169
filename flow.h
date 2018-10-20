@@ -29,4 +29,6 @@ void flow_set_minimum_offset( uint8_t offset_minimum );
 uint8_t flow_get_minimum_offset( void );
 uint16_t flow_get_ratio_tracking(void);
 
+void flow_reset(void);
+
 #endif

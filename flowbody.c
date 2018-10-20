@@ -62,8 +62,8 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_BF(SWITCHER1_VS, 27V0),        	// Target VPR voltage
 #endif
                                                         // Switcher 2
-            MAX3510X_BF( SWITCHER2_LT_N, 0V4 )|        	// running current limit V/R14
-            MAX3510X_BF( SWITCHER2_LT_S, 0V4 )|        	// startup current limit V/R14
+            MAX3510X_BF( SWITCHER2_LT_N, LOOP )|       	// running current limit V/R31
+            MAX3510X_BF( SWITCHER2_LT_S, NO_LIMIT )|    // startup current limit V/R31
             MAX3510X_REG_SET( SWITCHER2_ST, MAX3510X_REG_SWITCHER2_ST_US( MAX3510X_REG_SWITCHER2_ST_US_MIN ) )| // minimize stabilization time
             MAX3510X_BF( SWITCHER2_LT_50D, TRIMMED )|  	// limit switcher to 50% duty
             MAX3510X_BF( SWITCHER2_PECHO, DISABLED ),   // not using pulse-echo mode
@@ -80,7 +80,7 @@ static const max3510x_registers_t s_config[1] =
         {
             MAX3510X_OPCODE_WRITE_REG( MAX3510X_REG_TOF1 ),
 #if( TRANSDUCER == TRANSDUCER_AUDIOWELL_HT0008 )
-            MAX3510X_REG_SET( TOF1_PL, 16 )|            // number of pulses applied to the transducers
+            MAX3510X_REG_SET( TOF1_PL, 4 )|            // number of pulses applied to the transducers
             MAX3510X_BF( TOF1_DPL, 200KHZ )|            // pulse launch frequency
 #else
             MAX3510X_REG_SET( TOF1_PL, 8 )|             // number of pulses applied to the transducers
@@ -124,7 +124,7 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_BF( CALIBRATION_CONTROL_INT_EN, ENABLED )|     // enable the MAX35104 to issue interrupts via the INT pin
             MAX3510X_BF( CALIBRATION_CONTROL_ET_CONT, DISABLED )|    // one-shot event mode
             MAX3510X_BF( CALIBRATION_CONTROL_CONT_INT, DISABLED )|	// event modes generate an interrupt at the end of the complete sequence
-            MAX3510X_BF( CALIBRATION_CONTROL_CLK_S, 1046US )|   
+            MAX3510X_BF( CALIBRATION_CONTROL_CLK_S, CONTINUOUS )|   
             MAX3510X_BF( CALIBRATION_CONTROL_CAL_PERIOD, MAX ),		// calibration time MAX=488us
 		
             MAX3510X_BF( RTC_32K_BP, DISABLED )|       // using a 32.768kHz crystal
@@ -140,10 +140,7 @@ static const max3510x_registers_t s_config[1] =
 static const config_algo_t s_algo =
 {
     // transducer-specific defaults for the tracking algorithm and other firmware-specific values
-	.calibration_ratio = 0,
-	.offset_minimum = 50,
-	.ratio_tracking =  0xB505, // Q16 format.  approximately == 0.707
-	.sampling_frequency = 10,
+	.offset_minimum = 20,
 	.temperature_ratio = 20,
 };
 
