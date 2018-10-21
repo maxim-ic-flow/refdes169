@@ -47,11 +47,10 @@ static void task_ui( void *pv )
                     {
                         //   power up the LCD.
                         lcd_on();
-//                        lcd_cursor(0,0);
-//                        const char *x = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF";
-//                        const char *y = "************************************************";
-                        //lcd_write_data(x, strlen(x));
-                        //lcd_write_data(y, strlen(y));
+                        uint8_t * p_lcd = lcd_aquire();
+                        lcd_printf( "MAXIM INTEGRATED" \
+                                    "  MAXREFDES169  " \
+                                    " Gas Flow Meter " );
                         lcd_power_state = true;
                         lcd_off_count = LCD_POWER_OFF_DELAY_MS/LCD_UPDATE_PERIOD_MS;
                     }
