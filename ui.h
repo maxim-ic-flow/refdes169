@@ -4,7 +4,7 @@
 #include "board.h"
 
 void ui_init(void);
-void ui_button ( board_button_t button, bool state );
-
+void ui_buttons_isr(void);
+void ui_lcd_transfer_complete( int );
 #endif // __UI_H__
 

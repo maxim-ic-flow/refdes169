@@ -74,6 +74,8 @@ typedef unsigned long UBaseType_t;
 #define portTICK_PERIOD_MS			( ( TickType_t ) 1000 / configTICK_RATE_HZ )
 #define portTICK_PERIOD_2N			( ( TickType_t ) 1024 / configTICK_RATE_HZ )
 #define portBYTE_ALIGNMENT			8
+#define portDELAY_MS(ms) ( ((ms % portTICK_PERIOD_MS) ? 1 : 0) + (ms / portTICK_PERIOD_MS) )	// rounds up
+
 /*-----------------------------------------------------------*/
 
 /* Scheduler utilities. */

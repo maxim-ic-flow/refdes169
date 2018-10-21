@@ -63,7 +63,7 @@
       linker_printf_fp_enabled="Float"
       linker_scanf_character_group_matching_enabled="No"
       linker_section_placement_file="MAX32625_flash_placement.xml"
-      macros="DeviceSystemFile=..\\board\\$(BOARD)\\csl\\CMSIS\\Device\\Maxim\\MAX32625\\Source\\system_max32625.c;DeviceLoaderFile=$(TargetsDir)/MAX32625/Loader/MAX32625_Loader.elf;DeviceFamily=MAX32625;BOARD=refdes169"
+      macros="DeviceRegisterDefinitionFile=$(TargetsDir)/MAX32625/XML/max32625_Registers.xml;DeviceSystemFile=..\\board\\$(BOARD)\\csl\\CMSIS\\Device\\Maxim\\MAX32625\\Source\\system_max32625.c;DeviceLoaderFile=$(TargetsDir)/MAX32625/Loader/MAX32625_Loader.elf;DeviceFamily=MAX32625;BOARD=refdes169"
       package_dependencies="MAX32625"
       project_directory=""
       project_type="Executable"

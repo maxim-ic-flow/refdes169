@@ -306,6 +306,7 @@
                 <F N="../board/refdes169/csl.h"/>
                 <F N="../board/refdes169/lcd.c"/>
                 <F N="../board/refdes169/lcd.h"/>
+                <F N="../board/refdes169/spidefs.h"/>
                 <F N="../board/refdes169/tdc.c"/>
                 <F N="../board/refdes169/tdc.h"/>
             </Folder>
