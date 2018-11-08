@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017 Maxim Integrated Products, Inc., All Rights Reserved.
+ * Copyright (C) 2018 Maxim Integrated Products, Inc., All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -42,8 +42,8 @@ typedef struct _flowbody_sample_t
 {
     max3510x_time_t up;
     max3510x_time_t down;
-	max3510x_time_t up_period;
-	max3510x_time_t down_period;
+    max3510x_time_t up_period;
+    max3510x_time_t down_period;
 }
 flowbody_sample_t;
 

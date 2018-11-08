@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017 Maxim Integrated Products, Inc., All Rights Reserved.
+ * Copyright (C) 2018 Maxim Integrated Products, Inc., All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -53,7 +53,7 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_OPCODE_WRITE_REG( MAX3510X_REG_SWITCHER1 ),
             // Switcher 1
             MAX3510X_BF( SWITCHER1_SFREQ, 100KHZ)|    	// doubler frequency
-            MAX3510X_BF(SWITCHER1_HREG_D, ENABLED)|		// 
+            MAX3510X_BF(SWITCHER1_HREG_D, ENABLED)|		//
             MAX3510X_BF(SWITCHER1_DREQ, 200KHZ)|     	// switching frequency
             MAX3510X_BF(SWITCHER1_DEFAULT, DEFAULT)|
 #if( TRANSDUCER == TRANSDUCER_AUDIOWELL_HT0008 )
@@ -92,25 +92,25 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_REG_SET( TOF2_T2WV, 2 )|              // The T2 wave is the 2nd wave after T1
             MAX3510X_BF( TOF2_TOF_CYC, 0US )|              // minimize delay between up and down measurements
             MAX3510X_BF( TOF2_TIMOUT, 512US ),             // timeout
-		
+
             MAX3510X_REG_SET( TOF3_HIT1WV, 8 )|            // hit waves occur immediately after the T2 wave
             MAX3510X_REG_SET( TOF3_HIT2WV, 9 ),
-		
+
             MAX3510X_REG_SET( TOF4_HIT3WV, 10 )|
             MAX3510X_REG_SET( TOF4_HIT4WV, 11 ),
-		
+
             MAX3510X_REG_SET( TOF5_HIT5WV, 12 )|
             MAX3510X_REG_SET( TOF5_HIT6WV, 13 ),
-		
+
             MAX3510X_REG_SET( TOF6_C_OFFSETUPR, 0 )|                   	// hit values correspond to zero crossings of the hit waves
             MAX3510X_REG_SET( TOF6_C_OFFSETUP, DEFAULT_T1_THRESHOLD ),  // T1 threshold
-		
+
             MAX3510X_REG_SET( TOF7_C_OFFSETDNR, 0 )|
             MAX3510X_REG_SET( TOF7_C_OFFSETDN, DEFAULT_T1_THRESHOLD ),
             MAX3510X_REG_SET( EVENT_TIMING_1_TDF, MAX3510X_REG_EVENT_TIMING_1_TDF_S( 1.0 ) ) |	// event mode tof diff samples at 1Hz
             MAX3510X_REG_SET( EVENT_TIMING_1_TMF, MAX3510X_REG_EVENT_TIMING_1_TMF_S( 1.0 ) ) |	// event mode temperature samples at 1Hz
             MAX3510X_REG_SET( EVENT_TIMING_1_TDM, MAX3510X_REG_EVENT_TIMING_1_TDM_C( 1 ) ),		// event mode tof diff collects a single tof diff measurement per sequence
-		
+
             MAX3510X_REG_SET( EVENT_TIMING_2_TMM, MAX3510X_REG_EVENT_TIMING_2_TMM_C( 1 ) )|     // event mode temperature collects a single temperature measurement per sequence
             MAX3510X_BF( EVENT_TIMING_2_CAL_USE, ENABLED  )|                                    	// calibration values are applied to measurement results
             MAX3510X_BF( EVENT_TIMING_2_CAL_CFG, DISABLED )|                                   	// calibration is driven by the host cpu.
@@ -118,15 +118,15 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_BF( EVENT_TIMING_2_PORTCYC, 256US ),
 
             MAX3510X_REG_SET( TOF_MEASUREMENT_DELAY_DLY, MAX3510X_REG_TOF_MEASUREMENT_DELAY_DLY_US( 220 ) ),   // receiption squelch time
-		
+
             MAX3510X_BF( CALIBRATION_CONTROL_CMP_EN, ENABLED )|     // the output of the comparator is applied to the CMP_OUT pin (TP1)
             MAX3510X_BF( CALIBRATION_CONTROL_CMP_SEL, CMP_EN )|     // enable the CMP_OUT pin
             MAX3510X_BF( CALIBRATION_CONTROL_INT_EN, ENABLED )|     // enable the MAX35104 to issue interrupts via the INT pin
             MAX3510X_BF( CALIBRATION_CONTROL_ET_CONT, DISABLED )|    // one-shot event mode
             MAX3510X_BF( CALIBRATION_CONTROL_CONT_INT, DISABLED )|	// event modes generate an interrupt at the end of the complete sequence
-            MAX3510X_BF( CALIBRATION_CONTROL_CLK_S, CONTINUOUS )|   
+            MAX3510X_BF( CALIBRATION_CONTROL_CLK_S, CONTINUOUS )|
             MAX3510X_BF( CALIBRATION_CONTROL_CAL_PERIOD, MAX ),		// calibration time MAX=488us
-		
+
             MAX3510X_BF( RTC_32K_BP, DISABLED )|       // using a 32.768kHz crystal
             MAX3510X_BF( RTC_32K_EN, DISABLED )|       // disable 32KOUT
             MAX3510X_BF( RTC_EOSC, DISABLED )|         // not using the RTC, so disable it's clock.
@@ -160,14 +160,14 @@ bool flowbody_config( config_t *p_config, uint8_t ndx )
 // of the flowbody.  This allows for offsetting to minimize precision loss incured by converting to
 // TDC time integers to single-point floats.
 
-// For this flowbody, TOF values require 27 bits (-10C to +40C, dry air).  Offsetting reduce this to 25 bits.  
-// 2 bits of precision are lost during conversion to sp-float instead of 4 bits. 
+// For this flowbody, TOF values require 27 bits (-10C to +40C, dry air).  Offsetting reduce this to 25 bits.
+// 2 bits of precision are lost during conversion to sp-float instead of 4 bits.
 
 // TOF_MIN can be set to zero when working with an unknown flowbody.
 
 void flowbody_transducer_compensate( const flowbody_sample_t *p_sample, uint32_t * p_up, uint32_t * p_down )
 {
-    // This firmware does not provide transducer-specific temperature compensation. 
+    // This firmware does not provide transducer-specific temperature compensation.
 
 	// As a result, flow data from this firmware is dependant on temperature.  At a single temperature,
 	// it is common to see a non-zero flow, which is referred to as "zero-flow offset".  It can be positive or negative
@@ -190,7 +190,7 @@ void flowbody_transducer_compensate( const flowbody_sample_t *p_sample, uint32_t
 		.count = ARRAY_COUNT(table),
 	};
 
-	// provided as an example if you want to use mpli.  
+	// provided as an example if you want to use mpli.
 	int32_t offset_adjust = (int32_t)mpli_calc( &mpli, (mpli_dt)(p_sample->up_period + p_sample->down_period ) );
     *p_up = p_sample->up - offset_adjust;
     *p_down = p_sample->down + offset_adjust;
@@ -201,6 +201,7 @@ void flowbody_flow_sos( max3510x_time_t up, max3510x_time_t down, flow_dt *p_flo
     // Convert time-of-flight data to flow and speed-of-sound using the sum over product and difference over product methods
     static const mpli_point_t table[] =
     {
+        // This table contian
         { -1E-6, -1E-6 }, { 1E-6, 1E-6 }
     };
     static const mpli_t mpli =
@@ -208,7 +209,7 @@ void flowbody_flow_sos( max3510x_time_t up, max3510x_time_t down, flow_dt *p_flo
         .table = table,
         .count = ARRAY_COUNT(table),
     };
-    
+
 	const uint32_t offset = TOF_MIN;
 
 	uint32_t upo = up - offset;
@@ -225,11 +226,10 @@ void flowbody_flow_sos( max3510x_time_t up, max3510x_time_t down, flow_dt *p_flo
 
     // The intent here is to linearlize the flow response of the flowbody as well as correct for model errors.
     // The interpolation table is specific to the physical aspects of the flowbody.
-    // Use the 'fcal' command (see com.c) to create datapoints for this table.
     mpli_dt linearized_flow = mpli_calc( &mpli, flow );
 
 	*p_flow = (flow_dt)linearized_flow;
-								            
+
 	if( p_sos )
 	{
         float_t sf = (float_t)(up + down - offset<<1 );
@@ -244,7 +244,7 @@ flow_dt flowbody_volumetric( flow_dt integrated_flow, uint32_t sample_count )
 	static const flow_dt velocity_to_volumetric = 1.0f;  // Q2.30
 
 	// given linearized flow, this function returns a volumetric value with the assumption
-	// that volumetric flow is scaled version of linear flow.  
+	// that volumetric flow is scaled version of linear flow.
 
 	flow_dt v = integrated_flow / sample_count;
 	return v;
