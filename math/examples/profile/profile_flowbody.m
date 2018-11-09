@@ -44,5 +44,5 @@ profile_result = table( setpoints', time_mean', time_std', flow_mean' );
 profile_result.Properties.VariableNames = {'SetPoint','Mean','StdDev','Flow' };
 
 path( oldpath );
-clear olddpath up down delta_t flow_mean time_mean time_std;
+clear olddpath up down delta_t flow_mean time_mean time_std i;
 
