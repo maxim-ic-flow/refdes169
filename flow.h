@@ -51,6 +51,8 @@ void flow_set_cal_sampling_ratio( uint32_t count );
 void flow_set_sampling_frequency( uint8_t freq_hz );
 uint8_t flow_get_sampling_frequency( void );
 
+float_t flow_rate( void );
+
 void flow_set_down_offset( uint8_t up );
 void flow_set_up_offset( uint8_t up );
 
@@ -60,5 +62,8 @@ uint8_t flow_get_minimum_offset( void );
 uint16_t flow_get_ratio_tracking(void);
 
 void flow_reset(void);
+
+int32_t flow_zfo(void);
+bool flow_temperature_ratio( double_t * p_temp_ratio );
 
 #endif

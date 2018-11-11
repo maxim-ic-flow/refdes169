@@ -35,6 +35,7 @@
 #include "ui.h"
 #include "board.h"
 #include "lcd.h"
+#include "flow.h"
 
 #define MAX_BUTTON_EVENTS 2
 
@@ -53,53 +54,58 @@ void ui_buttons_isr(void)
     portYIELD_FROM_ISR( woken );
 }
 
+static float_t resistance2celicus( double_t resistance )
+{
+    const double_t r0 = 1000;
+    const double_t a = 3.9083e-3;
+    const double_t b = -5.775e-7;
+    const double_t c1 = 4 * r0 * b;
+    const double_t c2 = a*a*r0*r0;
+    const double_t c3 = -a * r0;
+    const double_t c4 = 2 * r0 * b;
+
+    double_t dr = r0 - resistance;
+    double_t rad = sqrt( c2 - c1 * dr);
+    return (( c3 + rad) / c4 );
+}
+
 static void task_ui( void *pv )
 {
-    static const TickType_t lcd_delay[2] = { portMAX_DELAY, portDELAY_MS(LCD_UPDATE_PERIOD_MS) };
-
-    uint8_t lcd_off_count;
-    bool lcd_power_state;
-    uint32_t last_button_state = board_buttons();
-
     lcd_on();
     lcd_printf("MAXIM INTEGRATED"
                "  MAXREFDES169  "
-               " Gas Flow Meter ");
+               "                ");
+
+    vTaskDelay(portDELAY_MS(3000));
 
     while( 1 )
     {
-        if( pdTRUE == xSemaphoreTake( s_semaphore, lcd_delay[lcd_power_state] ) )
+        if( pdTRUE == xSemaphoreTake( s_semaphore, portDELAY_MS(LCD_UPDATE_PERIOD_MS) ) )
         {
             // button event
             vTaskDelay(portDELAY_MS(1));
             if( board_buttons() == s_button_state  )
             {
                 // debounced
-                if( !last_button_state && s_button_state )
-                {
-                    // one of the four user buttons has been pressed.
-                    if( lcd_power_state )
-                    {
-                    }
-                    else
-                    {
-                        //   power up the LCD.
-                        lcd_on();
-                        lcd_power_state = true;
-                        lcd_off_count = LCD_POWER_OFF_DELAY_MS/LCD_UPDATE_PERIOD_MS;
-                    }
-                }
-                last_button_state = s_button_state;
             }
             board_buttons_enable(true);
         }
         else
         {
-            // time out
-            if( lcd_power_state && lcd_off_count && !--lcd_off_count)
+            double_t temperature_ratio;
+            float_t flow = flow_rate();
+            if( flow_temperature_ratio( &temperature_ratio ) )
             {
-                lcd_off();
-                lcd_power_state = false;
+                float_t temp = resistance2celicus( 1000.0f * temperature_ratio );
+                lcd_printf( "Flow:      %5.2f"
+                            "Temp:      %5.1f"
+                            "                ", flow, temp );
+            }
+            else
+            {
+                lcd_printf( "Flow:      %2.2f"
+                           "                "
+                           "                ", flow );
             }
         }
     }

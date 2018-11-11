@@ -71,7 +71,7 @@ com_interactive_report_t;
 typedef struct _com_meter_t
 {
     flow_dt     flow;
-    flow_dt	sos;
+    flow_dt	    sos;
     flow_dt     volumetric;
 }
 com_meter_t;

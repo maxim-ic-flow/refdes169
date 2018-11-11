@@ -151,6 +151,7 @@
             <F N="../config.h"/>
             <F N="../flow.c"/>
             <F N="../flow.h"/>
+            <F N="../flow_mpli_autogen.h"/>
             <F N="../flowbody.c"/>
             <F N="../flowbody.h"/>
             <F N="../freertos_hooks.c"/>

@@ -29,7 +29,6 @@ classdef mass_flow
             fgetl( o.serial_file );
         end
         function delete( o )
-            set_point(o,0);
             fclose( o.serial_file );
             delete( o.serial_file );
         end

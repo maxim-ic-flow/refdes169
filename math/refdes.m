@@ -8,39 +8,60 @@ classdef refdes
 %   delete(rd);
 
     properties ( Access = private )
-        serial_file
+        serial
     end
     methods ( Access = private )
-        function send_cmd( o,  cmd )
-            fprintf( o.serial_file, cmd , 'async' );
-            fgetl( o.serial_file );
+        function tf = send_cmd( o,  cmd )
+            flush(o);
+            fprintf( o.serial, cmd , 'async' ); % mbed serial port requires 'async' for some reason
+            e = fgetl( o.serial );
+            if( length(e) == 0 )
+                tf = false;
+            else
+                tf = true;
+            end
+        end
+        function flush(o)
+            if( o.serial.BytesAvailable > 0 )
+                fread(o.serial, o.serial.BytesAvailable);
+            end
         end
     end
     methods
         function o = refdes(comport)
-            o.serial_file = serial( comport );
-            set( o.serial_file, 'BaudRate', 115200 );
-            set( o.serial_file, 'Terminator', 'CR' );
-            fopen( o.serial_file' );
+            o.serial = serial( comport );
+            set( o.serial, 'BaudRate', 115200 );
+            set( o.serial, 'Terminator', 'CR' );
+            set( o.serial, 'Timeout', 0.5 );
+            fopen( o.serial' );
+        end
+        function tf = tofsr( o, sample_rate_hz )
+            flush(o);
+            tf = send_cmd( o, sprintf( 'tofsr=%d', sample_rate_hz ) );
         end
         function lines = report( o, count, flags )
-            if( o.serial_file.BytesAvailable > 0 )
-                fread(o.serial_file, o.serial_file.BytesAvailable);
+            if( send_cmd( o, strcat('report ', flags ) ) == false )
+                lines = [];
+                return
             end
-            send_cmd( o, strcat('report', flags ) );
-            for i=1:count
-                s = fgetl( o.serial_file );
-                lines{i} = s(find(~isspace(s)));
+            c = 1;
+            while c <= count
+                s = fgetl( o.serial );
+                s = s(find(~isspace(s)));
+                if( isempty(s) )
+                    lines= [];
+                    return
+                end
+                lines{c} = s;
+                c = c + 1;
             end
             send_cmd( o, '\r' );
-            pause(1);
-            if( o.serial_file.BytesAvailable > 0 )
-                fread(o.serial_file, o.serial_file.BytesAvailable);
-            end
+            pause(0.5);
+            flush(o);
         end
         function delete( o )
-            fclose( o.serial_file );
-            delete( o.serial_file );
+            fclose( o.serial );
+            delete( o.serial );
         end
     end
 end

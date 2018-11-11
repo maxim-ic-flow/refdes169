@@ -64,15 +64,48 @@ typedef struct
     uint32_t    param;
 }
 event_t;
+static uint32_t s_ratio_counter;
+
+typedef struct
+{
+    uint32_t    size;
+    uint32_t    count;
+    uint32_t    ndx;
+}
+moving_average_t;
+
+typedef struct _counter_t
+{
+    uint32_t    reload;
+    uint32_t    current;
+}
+counter_t;
+
+static counter_t s_temperature_counter;
+static counter_t s_calibration_counter;
+
+#define ZFO_RECORD_SIZE 128
+
 
 static QueueHandle_t            s_event_queue;
-static bool                     s_interactive;
+static flow_dt                  s_sampling_period;
 static uint8_t                  s_offset_up_pending;
 static uint8_t                  s_offset_down_pending;
 static wave_track_direction_t   s_up, s_down;
 static uint32_t                 s_sample_count;
 static flow_dt                  s_flow_accumulator;
 static max3510x_time_t          s_zero_flow_offset;
+static uint8_t                  s_up_down_ndx;
+static uint8_t                  s_up_down_count;
+static uint32_t                 s_up_mean[ZFO_RECORD_SIZE];
+static uint32_t                 s_down_mean[ZFO_RECORD_SIZE];
+static int32_t                  s_zfo;
+static flow_dt                  s_flow_buffer[200];
+static uint32_t                 s_temperature[2] = { ~0, ~0 };
+static moving_average_t         s_moving_average_flow =
+{
+    .size = ARRAY_COUNT(s_flow_buffer)
+};
 
 void flow_sample_complete( tdc_cmd_context_t cmd_context )
 {
@@ -100,19 +133,24 @@ void flow_sample_clock( void )
     portYIELD_FROM_ISR( woken );
 }
 
-
-static uint32_t s_ratio_counter;
-
-
-typedef struct _counter_t
+static uint32_t moving_average_add( moving_average_t * p_ma )
 {
-    uint32_t    reload;
-    uint32_t    current;
+    uint32_t ndx = p_ma->ndx;
+    if( p_ma->count < p_ma->size  )
+    {
+        p_ma->count++;
+    }
+    p_ma->ndx++;
+    if( p_ma->ndx == p_ma->size  )
+    {
+        p_ma->ndx = 0;
+    }
+    return p_ma->ndx;
 }
-counter_t;
-
-static counter_t s_temperature_counter;
-static counter_t s_calibration_counter;
+static uint32_t moving_average_count( const moving_average_t *p_ma )
+{
+    return p_ma->count;
+}
 
 static void set_counter( counter_t * p_counter, uint32_t count )
 {
@@ -184,7 +222,7 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
 
 
     static bool calibration_defered = false;
-    if( s_interactive )
+    if( !s_sampling_period )
     {
         com_interactive_report_t report;
         tdc_get_tof_result( &report.tof );
@@ -219,22 +257,32 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
             {
                 if( !tracking )
                     tracking = wave_track_converge( &s_up, &s_down );
-
             }
         }
         // TOF data is validated
         // Convert time-of-flight values to flow and speed-of-sound
         if( tracking )
         {
-            board_led( BOARD_LED_RED, board_led_state_off );
             flow_dt flow, sos;
+            board_led( BOARD_LED_RED, board_led_state_off );
+
+            s_up_mean[s_up_down_ndx] = (int32_t)s_up.tof;
+            s_down_mean[s_up_down_ndx++] = (int32_t)s_down.tof;
+            if( s_up_down_count < ZFO_RECORD_SIZE )
+                s_up_down_count = s_up_down_ndx;
+            if( s_up_down_ndx >= ZFO_RECORD_SIZE )
+                s_up_down_ndx = 0;
+
             sample.up = s_up.tof;
             sample.down = s_down.tof;
             sample.up_period = s_up.period;
             sample.down_period = s_down.period;
             max3510x_time_t up, down;
             flowbody_transducer_compensate( &sample, &up, &down );
+            up += s_zfo;
+            down -= s_zfo;
             flowbody_flow_sos( up, down, &flow, &sos );
+            s_flow_buffer[ moving_average_add( &s_moving_average_flow ) ] = flow;
 
             s_sample_count++;
             s_flow_accumulator += flow;
@@ -265,15 +313,13 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
         }
         if( (result.status & (MAX3510X_REG_INTERRUPT_STATUS_TO | MAX3510X_REG_INTERRUPT_STATUS_TE)) == MAX3510X_REG_INTERRUPT_STATUS_TE )
         {
-            uint32_t t1 = max3510x_fixed_to_time( &result.temperature.temperature[0] );
-            uint32_t t2 = max3510x_fixed_to_time( &result.temperature.temperature[1] );
-            if( t1 != 0xFFFFFFFF && t2 != 0xFFFFFFFF )
-            {
-                // valid temperature sample
-            }
+            s_temperature[0] = max3510x_fixed_to_time( &result.temperature.temperature[0] );
+            s_temperature[1] = max3510x_fixed_to_time( &result.temperature.temperature[1] );
         }
         else
         {
+            s_temperature[0] = ~0;
+            s_temperature[1] = ~0;
             memset( &result.temperature.temperature, 0, sizeof(result.temperature.temperature) );
         }
         com_report( report_type_detail, (const com_report_t*)&result );
@@ -284,6 +330,7 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
         com_report( report_type_detail, (const com_report_t*)&result );
     }
 }
+
 
 static void task_flow( void * pv )
 {
@@ -300,7 +347,7 @@ static void task_flow( void * pv )
     flow_set_ratio_tracking( p_config->algo.ratio_tracking );
     flow_set_minimum_offset( p_config->algo.offset_minimum );
     tdc_read_thresholds( &s_up.comparator_offset, &s_down.comparator_offset );
-    board_set_sampling_frequency( p_config->algo.sampling_frequency );
+    flow_set_sampling_frequency( p_config->algo.sampling_frequency );
 
 
     while( 1 )
@@ -310,7 +357,7 @@ static void task_flow( void * pv )
         {
             case event_id_clock:
             {
-                if( s_interactive )
+                if( !s_sampling_period )
                     continue;
                 if( s_offset_up_pending )
                 {
@@ -334,7 +381,10 @@ static void task_flow( void * pv )
             {
                 uint8_t hz = (uint8_t)event.param;
                 board_set_sampling_frequency( hz );
-                s_interactive = hz ? false : true;
+                if( hz )
+                    s_sampling_period = 1.0f / board_get_sampling_frequency();
+                else
+                    s_sampling_period = 0;
                 break;
             }
         }
@@ -379,8 +429,61 @@ void flow_set_sampling_frequency( uint8_t freq_hz )
     xQueueSend( s_event_queue, &event, portMAX_DELAY );
 }
 
+float_t flow_rate( void )
+{
+    vTaskSuspendAll();
+    uint32_t i;
+    uint32_t count = moving_average_count(&s_moving_average_flow);
+    flow_dt sum = 0;
+    for(i=0;i<count;i++)
+    {
+        sum += s_flow_buffer[i];
+    }
+    xTaskResumeAll();
+    return sum / count;
+}
 uint8_t flow_get_sampling_frequency( void )
 {
     return  board_get_sampling_frequency();
 }
 
+int32_t flow_zfo(void)
+{
+    // Sets and returns zero-flow-offset
+    // s_zfo is used by the flow alorithm to compensate the time-of-flight values
+    // for transducer directional delay.
+    // This method is a not the ideal way to compensate transducer offset, but is provided
+    // for because it's easy and useful in a test environment.
+    // Call this function when the flow is known to be zero in order to establish the
+    // s_zfo compensation offset
+
+    // This is an C implimenation of zero_flow_offset.m
+
+    uint8_t i;
+    uint64_t sum_up = 0;
+    uint64_t sum_down = 0;
+    vTaskSuspendAll();
+    for(i=0;i<s_up_down_count;i++)
+    {
+        sum_up += s_up_mean[i];
+        sum_down += s_down_mean[i];
+    }
+    int32_t mean = (sum_up + sum_down) / (2*s_up_down_count);
+    int32_t up_mean = sum_up / s_up_down_count;
+    s_zfo = mean - up_mean;
+    xTaskResumeAll();
+    return s_zfo;
+}
+
+bool flow_temperature_ratio( double_t * p_temp_ratio )
+{
+    uint32_t t1, t2;
+    vTaskSuspendAll();
+    t1 = s_temperature[0];
+    t2 = s_temperature[1];
+    xTaskResumeAll();
+    if( t1 == ~0 || t2 == ~0 )
+        return false;
+    *p_temp_ratio = (double_t)t1 / (double_t)t2;
+    return true;
+}

@@ -47,7 +47,7 @@ typedef struct _flowbody_sample_t
 }
 flowbody_sample_t;
 
-typedef float_t flow_dt;
+typedef double_t flow_dt;
 
 void flowbody_flow_sos( max3510x_time_t up, max3510x_time_t down, flow_dt *p_flow, flow_dt *p_sos );
 

@@ -49,18 +49,18 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#define TX_CIRCBUFF_SIZE    4096	// max pending bytes to be output to UART
-#define RX_CIRCBUFF_SIZE    128		// max bytes to be stored while command parsing/dispatch is pending
-#define TX_MAX_MSG_SIZE     128		// max size of any single message to be output to UART
-#define RX_MAX_MSG_SIZE     32		// max size of any single command to be parsed from UART
+#define TX_CIRCBUFF_SIZE    4096    // max pending bytes to be output to UART
+#define RX_CIRCBUFF_SIZE    128     // max bytes to be stored while command parsing/dispatch is pending
+#define TX_MAX_MSG_SIZE     128     // max size of any single message to be output to UART
+#define RX_MAX_MSG_SIZE     32      // max size of any single command to be parsed from UART
 
-#define COMMAND_HISTORY_COUNT	4
+#define COMMAND_HISTORY_COUNT   4
 
 
-#define REPORT_MESSAGE_COUNT	4
+#define REPORT_MESSAGE_COUNT    4
 
-#define REPORT_TYPE_NATIVE			1
-#define REPORT_TYPE_METER			2
+#define REPORT_TYPE_NATIVE          1
+#define REPORT_TYPE_METER           2
 
 typedef enum _com_last_cmd_t
 {
@@ -74,19 +74,19 @@ com_last_cmd_t;
 static com_last_cmd_t s_last_cmd;
 
 
-static QueueSetHandle_t 	s_queue_set;
+static QueueSetHandle_t     s_queue_set;
 static StreamBufferHandle_t     s_tx_circbuf;
 static StreamBufferHandle_t     s_rx_circbuf;
 static StreamBufferHandle_t     s_report_buffer;
 static SemaphoreHandle_t        s_rx_semaphore;
 static SemaphoreHandle_t        s_report_semaphore;
 
-static char 		s_rx_buf[RX_MAX_MSG_SIZE];
-static uint8_t 		s_rx_ndx;
-static bool			s_output;
+static char         s_rx_buf[RX_MAX_MSG_SIZE];
+static uint8_t      s_rx_ndx;
+static bool         s_output;
 
-#define CAL_SAMPLE_COUNT	512
-#define CAL_SAMPLE_FREQ		128
+#define CAL_SAMPLE_COUNT    512
+#define CAL_SAMPLE_FREQ     128
 
 #define BIT_TIME  ((float_t)(1.0/4000000.0/65536.0))
 
@@ -105,7 +105,7 @@ static uint8_t s_report_format;
 typedef struct _enum_t
 {
     const char * p_tag;
-    uint16_t	value;
+    uint16_t    value;
 }
 enum_t;
 
@@ -1323,6 +1323,13 @@ static bool wf_set( const char * p_arg )
     return true;
 }
 
+static bool zfo_set( const char * p_arg )
+{
+    int32_t zfo = flow_zfo();
+    com_printf("%d\r\n", zfo );
+    return true;
+}
+
 static void wf_get( void )
 {
     uint16_t r = tdc_get_wf();
@@ -1475,7 +1482,7 @@ static bool halt_cmd( const char * p_arg )
 
 static bool cal_cmd( const char * p_arg )
 {
-//	s_last_tdc_cmd = tdc_cmd_cal;
+//  s_last_tdc_cmd = tdc_cmd_cal;
     tdc_cmd_calibrate();
     return true;
 }
@@ -1484,7 +1491,7 @@ static bool default_cmd( const char * p_arg )
 {
     config_default();
     board_reset();
-//	flow_init();
+//  flow_init();
     return true;
 }
 
@@ -1595,17 +1602,6 @@ static bool flow_cal_cmd( const char * p_arg )
     return true;
 }
 
-
-static bool zero_offset_cmd( const char * p_arg )
-{
-    s_zero_sample_count = CAL_SAMPLE_COUNT;
-    s_delta_acc = 0;
-    s_period_acc = 0;
-    s_prev_freq = flow_get_sampling_frequency();
-    flow_set_sampling_frequency( CAL_SAMPLE_FREQ );
-    return true;
-}
-
 static void tempr_get( void )
 {
     com_printf( "%d\r\n", flow_get_temp_sampling_ratio() );
@@ -1703,8 +1699,7 @@ static const cmd_t s_cmd[] =
     { "wf", "watchdog flag:  0=reset", wf_set, wf_get },
     { "wd_en", "watchdog enable:  1=enabled, 0=disabled", wd_en_set, wd_en_get },
     // chip commands
-
-//	{ "event", "start event timing mode: tof, temp, or both", start_event_cmd, NULL },
+//  { "event", "start event timing mode: tof, temp, or both", start_event_cmd, NULL },
     { "tof_up", "TOF_UP command", tof_up_cmd, NULL },
     { "tof_down", "TOF_DOWN command", tof_down_cmd, NULL },
     { "tof_diff", "TOF_DIFF command", tof_diff_cmd, NULL },
@@ -1716,8 +1711,8 @@ static const cmd_t s_cmd[] =
 
 // meta commands
 
+    { "zfo", "set zero flow offset", zfo_set, NULL },
     { "flow", "measure raw flow rate", flow_cal_cmd, NULL },
-    { "zfo", "measure zero flow offset", zero_offset_cmd, NULL },
     { "dc", "dumps all configuration registers", dc_cmd, NULL },
     { "rtrack", "track t1/t2 ratio by adjusting comparator offset thresholds", rtrack_set, rtrack_get },
     { "offmin", "sets the minimum offset used by the wave tracking algorithm", offmin_set, offmin_get },
@@ -1929,6 +1924,7 @@ static void task_com( void * pv )
     };
 
     QueueSetMemberHandle_t qs;
+
     com_printf( "\033cMAXREFDES169 v1.0\r\n> " );
     UART_ReadAsync( BOARD_UART, &req );
     while( 1 )
@@ -2019,8 +2015,7 @@ static void task_com( void * pv )
                 if(  s_report_format & COM_REPORT_FORMAT_METER )
                 {
                     xStreamBufferReceive( s_report_buffer, &report, sizeof(report.meter), 0 );
-                    uint32_t * v = (uint32_t*)&report.meter.volumetric;
-                    com_printf( "m%f,%f,%f\r\n", report.meter.flow, report.meter.sos, v[1], v[0] );
+                    com_printf( "m%.3f\r\n", report.meter.flow  );
                 }
                 if( s_flow_sample_count )
                 {
