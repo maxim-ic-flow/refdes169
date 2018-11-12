@@ -296,8 +296,10 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
         {
             // all zero's indicates that the measurement timed out or couldn't be tracked.
             board_led( BOARD_LED_RED, board_led_state_on );
-            memset( &s_up, 0 , sizeof(s_up) ) ;
-            memset( &s_down, 0 , sizeof(s_down) ) ;
+            s_up.tof = 0;
+            s_down.tof = 0;
+            s_up.phase = 0;
+            s_down.phase = 0;
             s_up.comparator_offset = s_default_comparator_offset_up;
             s_down.comparator_offset = s_default_comparator_offset_down;
             memset( &sample, 0, sizeof(sample) );
@@ -337,6 +339,7 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
     }
 }
 
+static const config_t *s_p_config;
 
 static void task_flow( void * pv )
 {
@@ -346,16 +349,16 @@ static void task_flow( void * pv )
     static QueueSetMemberHandle_t qs;
     static event_t              event;
 
-    const config_t * p_config = config_load();
-    tdc_configure( &p_config->chip );
-    flow_set_temp_sampling_ratio( p_config->algo.temperature_ratio );
-    flow_set_cal_sampling_ratio( p_config->algo.calibration_ratio );
-    flow_set_ratio_tracking( p_config->algo.ratio_tracking );
-    flow_set_minimum_offset( p_config->algo.offset_minimum );
+    s_p_config = config_load();
+    tdc_configure( &s_p_config->chip );
+    flow_set_temp_sampling_ratio( s_p_config->algo.temperature_ratio );
+    flow_set_cal_sampling_ratio( s_p_config->algo.calibration_ratio );
+    flow_set_ratio_tracking( s_p_config->algo.ratio_tracking );
+    flow_set_minimum_offset( s_p_config->algo.offset_minimum );
     tdc_read_thresholds( &s_up.comparator_offset, &s_down.comparator_offset );
     s_default_comparator_offset_up = s_up.comparator_offset;
     s_default_comparator_offset_down = s_down.comparator_offset;
-    flow_set_sampling_frequency( p_config->algo.sampling_frequency );
+    flow_set_sampling_frequency( s_p_config->algo.sampling_frequency );
 
 
     while( 1 )
@@ -479,6 +482,7 @@ int32_t flow_zfo(void)
     int32_t mean = (sum_up + sum_down) / (2*s_up_down_count);
     int32_t up_mean = sum_up / s_up_down_count;
     s_zfo = mean - up_mean;
+    s_moving_average_flow.count = 0;
     xTaskResumeAll();
     return s_zfo;
 }

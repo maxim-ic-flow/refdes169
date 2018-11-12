@@ -76,8 +76,9 @@ static void task_ui( void *pv )
                "  MAXREFDES169  "
                "                ");
 
-    vTaskDelay(portDELAY_MS(3000));
+    vTaskDelay(portDELAY_MS(2000));
     flow_zfo();
+    vTaskDelay(portDELAY_MS(2000));
     while( 1 )
     {
         if( pdTRUE == xSemaphoreTake( s_semaphore, portDELAY_MS(LCD_UPDATE_PERIOD_MS) ) )
