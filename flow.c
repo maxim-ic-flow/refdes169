@@ -92,6 +92,8 @@ static flow_dt                  s_sampling_period;
 static uint8_t                  s_offset_up_pending;
 static uint8_t                  s_offset_down_pending;
 static wave_track_direction_t   s_up, s_down;
+static uint8_t                  s_default_comparator_offset_up;
+static uint8_t                  s_default_comparator_offset_down;
 static uint32_t                 s_sample_count;
 static flow_dt                  s_flow_accumulator;
 static max3510x_time_t          s_zero_flow_offset;
@@ -294,6 +296,10 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
         {
             // all zero's indicates that the measurement timed out or couldn't be tracked.
             board_led( BOARD_LED_RED, board_led_state_on );
+            memset( &s_up, 0 , sizeof(s_up) ) ;
+            memset( &s_down, 0 , sizeof(s_down) ) ;
+            s_up.comparator_offset = s_default_comparator_offset_up;
+            s_down.comparator_offset = s_default_comparator_offset_down;
             memset( &sample, 0, sizeof(sample) );
             memset( &result.tof.tof, 0, sizeof(result.tof.tof) );
             memset( &meter, 0, sizeof(meter) );
@@ -347,6 +353,8 @@ static void task_flow( void * pv )
     flow_set_ratio_tracking( p_config->algo.ratio_tracking );
     flow_set_minimum_offset( p_config->algo.offset_minimum );
     tdc_read_thresholds( &s_up.comparator_offset, &s_down.comparator_offset );
+    s_default_comparator_offset_up = s_up.comparator_offset;
+    s_default_comparator_offset_down = s_down.comparator_offset;
     flow_set_sampling_frequency( p_config->algo.sampling_frequency );
 
 

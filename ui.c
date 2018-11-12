@@ -77,7 +77,7 @@ static void task_ui( void *pv )
                "                ");
 
     vTaskDelay(portDELAY_MS(3000));
-
+    flow_zfo();
     while( 1 )
     {
         if( pdTRUE == xSemaphoreTake( s_semaphore, portDELAY_MS(LCD_UPDATE_PERIOD_MS) ) )
@@ -87,6 +87,7 @@ static void task_ui( void *pv )
             if( board_buttons() == s_button_state  )
             {
                 // debounced
+                flow_zfo();
             }
             board_buttons_enable(true);
         }
@@ -94,6 +95,10 @@ static void task_ui( void *pv )
         {
             double_t temperature_ratio;
             float_t flow = flow_rate();
+            if( flow < 0.1 )
+                flow = 0;
+            if( flow < 0.4 )
+                flow *= .3;
             if( flow_temperature_ratio( &temperature_ratio ) )
             {
                 float_t temp = resistance2celicus( 1000.0f * temperature_ratio );
