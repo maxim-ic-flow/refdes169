@@ -35,7 +35,8 @@
 #include "board.h"
 #include "flowbody.h"
 #include "mpli.h"
-#include "flow_mpli_autogen.h"
+#include "p1.h"
+#include "p2.h"
 
 #define TRANSDUCER_AUDIOWELL_HT0008 0
 #define TRANSDUCER_CERAMTEC_09300 1
@@ -54,7 +55,7 @@ static const max3510x_registers_t s_config[1] =
             MAX3510X_OPCODE_WRITE_REG( MAX3510X_REG_SWITCHER1 ),
             // Switcher 1
             MAX3510X_BF( SWITCHER1_SFREQ, 100KHZ)|      // doubler frequency
-            MAX3510X_BF(SWITCHER1_HREG_D, ENABLED)|     //
+            MAX3510X_BF(SWITCHER1_HREG_D, DISABLED)|    // JB2 shunt should be installed
             MAX3510X_BF(SWITCHER1_DREQ, 200KHZ)|        // switching frequency
             MAX3510X_BF(SWITCHER1_DEFAULT, DEFAULT)|
 #if( TRANSDUCER == TRANSDUCER_AUDIOWELL_HT0008 )
@@ -154,17 +155,6 @@ bool flowbody_config( config_t * p_config, uint8_t ndx )
     return true;
 }
 
-#define TOF_MIN 0x40A1EF2
-#define TOF_MAX 0x51C0A56
-
-// TOF_MIN and TOF_MAX describe the range of time-of-flight values expected from the TDC across the operating range
-// of the flowbody.  This allows for offsetting to minimize precision loss incured by converting to
-// TDC time integers to single-point floats.
-
-// For this flowbody, TOF values require 27 bits (-10C to +40C, dry air).  Offsetting reduce this to 25 bits.
-// 2 bits of precision are lost during conversion to sp-float instead of 4 bits.
-
-// TOF_MIN can be set to zero when working with an unknown flowbody.
 
 void flowbody_transducer_compensate( const flowbody_sample_t * p_sample, uint32_t * p_up, uint32_t * p_down )
 {
@@ -181,36 +171,57 @@ void flowbody_transducer_compensate( const flowbody_sample_t * p_sample, uint32_
     // However, other inputs, like an actual temperature measurement, can also be used to drive the compensation algorithm.
     // See Maxim Application Note 6631 for more information.
 
-    static const mpli_point_t table[] =
-    {
-        { TOF_MIN, 0 }, { TOF_MAX, 0 }
-    };
-    static const mpli_t mpli =
-    {
-        .table = table,
-        .count = ARRAY_COUNT( table ),
-    };
+	static const mpli_point_t points[2] =
+	{
+		{ 1276683.9456, -5949.05479999 },
+		{ 1289606.7682, -3590.22760001 },
+	};
+	static const mpli_t mpli =
+	{
+		points, 2
+	};
 
     // provided as an example if you want to use mpli.
-    int32_t offset_adjust = 0; // (int32_t)mpli_calc( &mpli, (mpli_dt)(p_sample->up_period + p_sample->down_period) );
-    *p_up = p_sample->up - offset_adjust;
-    *p_down = p_sample->down + offset_adjust;
+	//mpli_dt zfo = mpli_calc( &mpli, (p_sample->up_period + p_sample->down_period) >> 1 );
+
+    int32_t offset_adjust = 0; //(int32_t)zfo;
+    *p_up = p_sample->up + offset_adjust;
+    *p_down = p_sample->down - offset_adjust;
 }
 
-void flowbody_flow_sos( max3510x_time_t up, max3510x_time_t down, flow_dt * p_flow, flow_dt * p_sos )
+void flowbody_flow_sos(const flowbody_sample_t * p_sample, flow_dt * p_flow, flow_dt * p_sos )
 {
     // Convert time-of-flight data to flow and speed-of-sound using the sum over product and difference over product methods
 
+	static const mpli_point_t zfo[2] =
+	{
+		{ 1276683.9456, -5949.05479999 },
+		{ 1289606.7682, -3590.22760001 },
+	};
+	static const mpli_t zfo_mpli =
+	{
+		zfo, 2
+	};
+
+	const mpli_dt p2 = 1.276683945600000e+06;
+	const mpli_dt p1 = 1.289606768200000e+06;
     const mpli_dt one = 1.0;
 
-    mpli_dt upp = (mpli_dt)up;
-    mpli_dt dnn = (mpli_dt)down;
+	mpli_dt f1, f2;
+    mpli_dt upp = (mpli_dt)p_sample->up;
+    mpli_dt dnn = (mpli_dt)p_sample->down;
+	mpli_dt p;
 
     if( p_flow )
     {
         mpli_dt raw_flow =  one / dnn - one / upp;      // This quantity is proportional to gas flow through the flowbody
                                                         // and is independant of the speed-of-sound.
-        *p_flow = mpli_calc( &s_mpli_flow_comp, raw_flow );
+        f1 = mpli_calc( &s_mpli_p1, raw_flow );
+		f2 = mpli_calc( &s_mpli_p2, raw_flow );
+		p = (p_sample->up_period + p_sample->down_period) >> 1;
+		mpli_dt x = (p - p2) / ( p1 - p2 );
+		*p_flow = f1*(1-x)+f2*x;
+
     }
 
     if( p_sos )

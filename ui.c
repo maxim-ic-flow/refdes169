@@ -95,25 +95,57 @@ static void task_ui( void *pv )
         else
         {
             double_t temperature_ratio;
-            float_t flow = flow_rate();
-            if( flow < 0.1 )
-                flow = 0;
-            if( flow < 0.4 )
-                flow *= .3;
-            if( flow_temperature_ratio( &temperature_ratio ) )
-            {
-                float_t temp = resistance2celicus( 1000.0f * temperature_ratio );
-                lcd_printf( "Flow:      %5.2f"
-                            "Temp:      %5.1f"
-                            "                ", flow, temp );
-            }
-            else
-            {
-                lcd_printf( "Flow:      %2.2f"
-                           "                "
-                           "                ", flow );
-            }
-        }
+            flow_dt flow;
+			flow_state_t state = flow_state();
+			switch( state )
+			{
+				case flow_state_running:
+				{
+					board_led( BOARD_LED_RED, board_led_state_off );
+					if( flow_rate( &flow ) )
+					{
+						if( flow_temperature_ratio( &temperature_ratio ) )
+						{
+							float_t temp = resistance2celicus( 1000.0f * temperature_ratio );
+							lcd_printf( "Flow:      %5.2f"
+										"Temp:      %5.1f"
+										"                ", flow, temp );
+						}
+						else
+						{
+							lcd_printf( "Flow:      %2.2f"
+									   "                "
+									   "                ", flow );
+						}
+					}
+					break;
+				}
+				case flow_state_idle:
+				{
+					board_led( BOARD_LED_RED, board_led_state_off );
+					lcd_printf( "                "
+								"  System Idle   "
+								"                " );
+					break;
+				}
+				case flow_state_connection:
+				{
+					board_led( BOARD_LED_RED, board_led_state_on );
+                    lcd_printf( "   Transducer   "
+                                "  Disconnected  "
+                                "                " );
+					break;
+				}
+				case flow_state_fatal:
+				{
+					board_led( BOARD_LED_RED, board_led_state_on );
+					lcd_printf( "  System Fatal  "
+								"     Error      "
+								"                " );
+					break;
+				}
+			}
+		}
     }
 }
 

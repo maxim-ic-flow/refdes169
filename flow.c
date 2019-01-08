@@ -104,6 +104,7 @@ static uint32_t                 s_down_mean[ZFO_RECORD_SIZE];
 static int32_t                  s_zfo;
 static flow_dt                  s_flow_buffer[200];
 static uint32_t                 s_temperature[2] = { ~0, ~0 };
+static flow_state_t             s_flow_state;
 static moving_average_t         s_moving_average_flow =
 {
     .size = ARRAY_COUNT(s_flow_buffer)
@@ -266,7 +267,7 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
         if( tracking )
         {
             flow_dt flow, sos;
-            board_led( BOARD_LED_RED, board_led_state_off );
+			s_flow_state = flow_state_running;
 
             s_up_mean[s_up_down_ndx] = (int32_t)s_up.tof;
             s_down_mean[s_up_down_ndx++] = (int32_t)s_down.tof;
@@ -281,9 +282,9 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
             sample.down_period = s_down.period;
             max3510x_time_t up, down;
             flowbody_transducer_compensate( &sample, &up, &down );
-            up += s_zfo;
-            down -= s_zfo;
-            flowbody_flow_sos( up, down, &flow, &sos );
+           // up += s_zfo;
+           // down -= s_zfo;
+            flowbody_flow_sos( &sample, &flow, &sos );
             s_flow_buffer[ moving_average_add( &s_moving_average_flow ) ] = flow;
 
             s_sample_count++;
@@ -295,7 +296,7 @@ static void process_tdc_measurement( tdc_cmd_context_t cmd_context )
         else
         {
             // all zero's indicates that the measurement timed out or couldn't be tracked.
-            board_led( BOARD_LED_RED, board_led_state_on );
+            s_flow_state = flow_state_connection;
             s_up.tof = 0;
             s_down.tof = 0;
             s_up.phase = 0;
@@ -350,7 +351,11 @@ static void task_flow( void * pv )
     static event_t              event;
 
     s_p_config = config_load();
-    tdc_configure( &s_p_config->chip );
+    if( !tdc_configure( &s_p_config->chip ) )
+    {
+        s_flow_state = flow_state_fatal;
+        vTaskDelay( portMAX_DELAY );
+    }
     flow_set_temp_sampling_ratio( s_p_config->algo.temperature_ratio );
     flow_set_cal_sampling_ratio( s_p_config->algo.calibration_ratio );
     flow_set_ratio_tracking( s_p_config->algo.ratio_tracking );
@@ -359,7 +364,6 @@ static void task_flow( void * pv )
     s_default_comparator_offset_up = s_up.comparator_offset;
     s_default_comparator_offset_down = s_down.comparator_offset;
     flow_set_sampling_frequency( s_p_config->algo.sampling_frequency );
-
 
     while( 1 )
     {
@@ -396,7 +400,12 @@ static void task_flow( void * pv )
                     s_sampling_period = 1.0f / board_get_sampling_frequency();
                 else
                     s_sampling_period = 0;
-                break;
+
+				if(  s_sampling_period  )
+					s_flow_state = flow_state_running;
+				else
+					s_flow_state = flow_state_idle;
+				break;
             }
         }
     }
@@ -440,18 +449,29 @@ void flow_set_sampling_frequency( uint8_t freq_hz )
     xQueueSend( s_event_queue, &event, portMAX_DELAY );
 }
 
-float_t flow_rate( void )
+flow_state_t flow_state( void )
+{
+	return s_flow_state;
+}
+bool flow_rate( flow_dt *p_flow )
 {
     vTaskSuspendAll();
     uint32_t i;
-    uint32_t count = moving_average_count(&s_moving_average_flow);
-    flow_dt sum = 0;
-    for(i=0;i<count;i++)
+    if( s_flow_state == flow_state_running )
     {
-        sum += s_flow_buffer[i];
+        uint32_t count = moving_average_count(&s_moving_average_flow);
+        flow_dt sum = 0;
+        for(i=0;i<count;i++)
+        {
+            sum += s_flow_buffer[i];
+        }
+        xTaskResumeAll();
+        *p_flow = sum / count;
+        return true;
     }
-    xTaskResumeAll();
-    return sum / count;
+	xTaskResumeAll();
+    return false;
+
 }
 uint8_t flow_get_sampling_frequency( void )
 {

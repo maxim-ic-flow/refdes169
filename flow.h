@@ -36,6 +36,7 @@
 
 #include "max3510x.h"
 #include "tdc.h"
+#include "flowbody.h"
 
 void flow_init(void);
 
@@ -51,7 +52,19 @@ void flow_set_cal_sampling_ratio( uint32_t count );
 void flow_set_sampling_frequency( uint8_t freq_hz );
 uint8_t flow_get_sampling_frequency( void );
 
-float_t flow_rate( void );
+typedef enum
+{
+    flow_state_init,
+    flow_state_fatal,
+	flow_state_idle,
+	flow_state_connection,
+    flow_state_running
+}
+flow_state_t;
+
+flow_state_t flow_state( void );
+
+bool flow_rate( flow_dt *p_flow );
 
 void flow_set_down_offset( uint8_t up );
 void flow_set_up_offset( uint8_t up );

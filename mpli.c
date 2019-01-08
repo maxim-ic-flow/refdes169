@@ -61,7 +61,7 @@ mpli_dt mpli_calc( const mpli_t *p_table, mpli_dt in )
         mpli_dt y1 = p[i].y;
         mpli_dt y2 = p[i+1].y;
 
-        if( in < p[i+1].x )
+        if( in <= p[i+1].x )
         {
             out = y1 + (in-x1)*(y2-y1)/(x2-x1);
             break;

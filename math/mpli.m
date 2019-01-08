@@ -4,11 +4,15 @@ function out = mpli( setpoint, flow, in )
     % mpli.c
     %
     % tof is a struct that must have 'setpoint' and 'flow' members
-    
+    if( in < flow(1) )
+        in = flow(1)
+    elseif in > flow(end)
+        in = flow(end)
+    end
     len = length(setpoint);
     for i = 2:len
-        if( in < flow(i) )
-            x1 = flow(i-1);s
+        if( in <= flow(i) )
+            x1 = flow(i-1);
             x2 = flow(i);
             y1 = setpoint(i-1);
             y2 = setpoint(i);

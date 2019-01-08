@@ -163,5 +163,6 @@
     <file file_name="../wave_track.c" />
     <file file_name="../mpli.c" />
     <file file_name="../flowbody.c" />
+    <file file_name="../flow_mpli_autogen.h" />
   </project>
 </solution>

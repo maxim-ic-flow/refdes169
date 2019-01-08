@@ -49,7 +49,7 @@ flowbody_sample_t;
 
 typedef double_t flow_dt;
 
-void flowbody_flow_sos( max3510x_time_t up, max3510x_time_t down, flow_dt *p_flow, flow_dt *p_sos );
+void flowbody_flow_sos(const flowbody_sample_t * p_sample, flow_dt * p_flow, flow_dt * p_sos );
 
 bool flowbody_config( config_t *p_config, uint8_t ndx );
 void flowbody_transducer_compensate( const flowbody_sample_t *p_sample, uint32_t * p_up, uint32_t * p_down );

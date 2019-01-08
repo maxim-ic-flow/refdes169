@@ -160,6 +160,7 @@
             <F N="../main.c"/>
             <F N="../mpli.c"/>
             <F N="../mpli.h"/>
+            <F N="../temp_mpli_autogen.h"/>
             <F N="../ui.c"/>
             <F N="../ui.h"/>
             <F N="../wave_track.c"/>
